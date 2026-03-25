@@ -29,6 +29,10 @@ main() {
     local push=""
     local arch=""
     local prebake=true
+    local tar_file="${SCRIPT_DIR}/${IMAGE_NAME}-base.tar"
+
+    # Cleanup trap for tar file
+    trap 'rm -f "$tar_file"' EXIT
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -43,20 +47,33 @@ main() {
 
     echo "Building claude-sandbox base image..."
 
-    local apko_args=("build" "${SCRIPT_DIR}/claude-sandbox.apko.yaml" "${IMAGE_NAME}:base" "${SCRIPT_DIR}/${IMAGE_NAME}-base.tar")
+    local apko_args=("build" "${SCRIPT_DIR}/claude-sandbox.apko.yaml" "${IMAGE_NAME}:base" "$tar_file")
 
     if [[ -n "$arch" ]]; then
         apko_args+=("--arch" "$arch")
     fi
 
-    apko "${apko_args[@]}"
+    apko "${apko_args[@]}" || {
+        echo "Error: apko build failed" >&2
+        exit 1
+    }
 
     echo "Loading base image into Docker..."
-    docker load < "${SCRIPT_DIR}/${IMAGE_NAME}-base.tar"
+    [[ -f "$tar_file" ]] || {
+        echo "Error: tar file not found at $tar_file" >&2
+        exit 1
+    }
+    docker load < "$tar_file" || {
+        echo "Error: failed to load image into Docker" >&2
+        exit 1
+    }
 
     if [[ "$prebake" == true ]]; then
         echo "Pre-baking Claude Code into image..."
-        docker build -t "${IMAGE_NAME}:${TAG}" -f "${SCRIPT_DIR}/Dockerfile.prebake" "${SCRIPT_DIR}"
+        docker build -t "${IMAGE_NAME}:${TAG}" -f "${SCRIPT_DIR}/Dockerfile.prebake" "${SCRIPT_DIR}" || {
+            echo "Error: docker build failed" >&2
+            exit 1
+        }
     else
         docker tag "${IMAGE_NAME}:base" "${IMAGE_NAME}:${TAG}"
     fi
@@ -69,11 +86,11 @@ main() {
         local full_tag="${push}/${IMAGE_NAME}:${TAG}"
         echo "Pushing to ${full_tag}..."
         docker tag "${IMAGE_NAME}:${TAG}" "${full_tag}"
-        docker push "${full_tag}"
+        docker push "${full_tag}" || {
+            echo "Error: failed to push image to ${full_tag}" >&2
+            exit 1
+        }
     fi
-
-    # Cleanup
-    rm -f "${SCRIPT_DIR}/${IMAGE_NAME}-base.tar"
 
     echo "Done."
 }
