@@ -1,0 +1,205 @@
+package container
+
+import (
+	"os"
+	"strings"
+	"testing"
+)
+
+func TestBuildMounts(t *testing.T) {
+	opts := MountOptions{
+		WorktreePath: "/tmp/worktree",
+		HomeDir:      "/Users/test",
+	}
+
+	mounts := BuildMounts(opts)
+
+	// Check for required mounts
+	requiredSources := []string{
+		"/Users/test/.claude/settings.json",
+		"/Users/test/.claude/hooks",
+		"/Users/test/.gitconfig",
+		"/Users/test/.ssh",
+		"/tmp/worktree",
+	}
+
+	for _, src := range requiredSources {
+		found := false
+		for _, m := range mounts {
+			if m.Source == src {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("missing mount for %s", src)
+		}
+	}
+
+	// Check that worktree is read-write
+	for _, m := range mounts {
+		if m.Source == "/tmp/worktree" {
+			if m.ReadOnly {
+				t.Error("worktree mount should be read-write")
+			}
+			if m.Target != "/workspace" {
+				t.Errorf("worktree should mount to /workspace, got %s", m.Target)
+			}
+		}
+	}
+
+	// Check that config mounts are read-only
+	for _, m := range mounts {
+		if strings.Contains(m.Source, ".claude/settings.json") && !m.ReadOnly {
+			t.Error("settings.json should be read-only")
+		}
+	}
+}
+
+func TestBuildRunArgs(t *testing.T) {
+	opts := RunOptions{
+		Image:        "claude-sandbox:latest",
+		WorktreePath: "/tmp/worktree",
+		HomeDir:      "/Users/test",
+		APIKey:       "sk-test",
+		SpecPath:     "/tmp/worktree/spec.md",
+		Interactive:  true,
+	}
+
+	args := BuildRunArgs(opts)
+
+	// Should start with "run"
+	if args[0] != "run" {
+		t.Errorf("expected first arg 'run', got %s", args[0])
+	}
+
+	// Should have --rm
+	found := false
+	for _, arg := range args {
+		if arg == "--rm" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("missing --rm flag")
+	}
+
+	// Should have -it for interactive mode
+	foundIT := false
+	for _, arg := range args {
+		if arg == "-it" {
+			foundIT = true
+			break
+		}
+	}
+	if !foundIT {
+		t.Error("missing -it flags for interactive mode")
+	}
+
+	// Should set ANTHROPIC_API_KEY
+	for i, arg := range args {
+		if arg == "-e" && i+1 < len(args) && strings.HasPrefix(args[i+1], "ANTHROPIC_API_KEY=") {
+			return // Found it
+		}
+	}
+	t.Error("missing ANTHROPIC_API_KEY environment variable")
+}
+
+func TestBuildRunArgsNonInteractive(t *testing.T) {
+	opts := RunOptions{
+		Image:        "claude-sandbox:latest",
+		WorktreePath: "/tmp/worktree",
+		HomeDir:      "/Users/test",
+		APIKey:       "sk-test",
+		SpecPath:     "/tmp/worktree/spec.md",
+		Interactive:  false,
+	}
+
+	args := BuildRunArgs(opts)
+
+	// Should NOT have -it for non-interactive mode
+	for _, arg := range args {
+		if arg == "-it" {
+			t.Error("-it should not be present in non-interactive mode")
+		}
+	}
+}
+
+func TestMountToDockerArgs(t *testing.T) {
+	tests := []struct {
+		name     string
+		mount    Mount
+		expected []string
+	}{
+		{
+			name: "read-only mount",
+			mount: Mount{
+				Source:   "/host/path",
+				Target:   "/container/path",
+				ReadOnly: true,
+			},
+			expected: []string{"-v", "/host/path:/container/path:ro"},
+		},
+		{
+			name: "read-write mount",
+			mount: Mount{
+				Source:   "/host/path",
+				Target:   "/container/path",
+				ReadOnly: false,
+			},
+			expected: []string{"-v", "/host/path:/container/path"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			args := tt.mount.ToDockerArgs()
+			if len(args) != len(tt.expected) {
+				t.Errorf("expected %d args, got %d", len(tt.expected), len(args))
+				return
+			}
+			for i, arg := range args {
+				if arg != tt.expected[i] {
+					t.Errorf("arg %d: expected %q, got %q", i, tt.expected[i], arg)
+				}
+			}
+		})
+	}
+}
+
+func TestBuildClaudeCommand(t *testing.T) {
+	cmd := buildClaudeCommand("/workspace/spec.md")
+
+	if !strings.Contains(cmd, "/workspace/spec.md") {
+		t.Error("command should contain spec path")
+	}
+	if !strings.Contains(cmd, "--dangerously-skip-permissions") {
+		t.Error("command should include --dangerously-skip-permissions")
+	}
+}
+
+func TestRunOptions_MissingAPIKey(t *testing.T) {
+	// Save and clear env
+	orig := os.Getenv("ANTHROPIC_API_KEY")
+	os.Unsetenv("ANTHROPIC_API_KEY")
+	defer func() {
+		if orig != "" {
+			os.Setenv("ANTHROPIC_API_KEY", orig)
+		}
+	}()
+
+	opts := RunOptions{
+		WorktreePath: "/tmp/worktree",
+		SpecPath:     "/tmp/worktree/spec.md",
+		// APIKey intentionally empty
+	}
+
+	err := Run(t.Context(), opts)
+	if err == nil {
+		t.Error("expected error when ANTHROPIC_API_KEY not set")
+	}
+	if !strings.Contains(err.Error(), "ANTHROPIC_API_KEY") {
+		t.Errorf("error should mention ANTHROPIC_API_KEY, got: %v", err)
+	}
+}
