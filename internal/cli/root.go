@@ -13,6 +13,7 @@ func NewRootCommand(version string) *cobra.Command {
 	}
 
 	cmd.AddCommand(newInitCommand())
+	cmd.AddCommand(newRunCommand())
 
 	return cmd
 }
