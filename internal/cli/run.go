@@ -7,9 +7,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
-	"github.com/samueldacanay/claude-sandbox/internal/config"
 	"github.com/samueldacanay/claude-sandbox/internal/container"
 	"github.com/samueldacanay/claude-sandbox/internal/session"
 	"github.com/samueldacanay/claude-sandbox/internal/worktree"
@@ -18,15 +16,13 @@ import (
 
 func newRunCommand() *cobra.Command {
 	var specPath string
-	var timeout string
-	var retries int
 
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Launch Claude in sandboxed container",
 		Long: `Launches Claude Code in an isolated container to implement the specified spec.
 
-The container has quality gates enforced:
+Claude is prompted to follow these advisory quality gates:
   - Build must succeed
   - Lint must pass
   - Tests must pass
@@ -35,21 +31,20 @@ The container has quality gates enforced:
   - Commit hygiene checked
   - /review-code must return grade A
 
+Note: Quality gates are advisory prompts to Claude, not enforced checks.
 COMPLETION.md is written when done (success or blocked).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runRun(cmd, specPath, timeout, retries)
+			return runRun(cmd, specPath)
 		},
 	}
 
 	cmd.Flags().StringVar(&specPath, "spec", "", "Path to spec file or directory (required)")
-	cmd.Flags().StringVar(&timeout, "timeout", "2h", "Maximum execution time")
-	cmd.Flags().IntVar(&retries, "retries", 3, "Max retry attempts per quality gate")
 	_ = cmd.MarkFlagRequired("spec")
 
 	return cmd
 }
 
-func runRun(cmd *cobra.Command, specPath, timeout string, retries int) error {
+func runRun(cmd *cobra.Command, specPath string) error {
 	absSpec, err := filepath.Abs(specPath)
 	if err != nil {
 		return fmt.Errorf("resolve spec path: %w", err)
@@ -71,25 +66,6 @@ func runRun(cmd *cobra.Command, specPath, timeout string, retries int) error {
 
 	if !container.ImageExists(container.DefaultImage) {
 		return fmt.Errorf("container image not found: %s\nRun: cd container && ./build.sh --load", container.DefaultImage)
-	}
-
-	cfg, err := config.Load(wt.Path)
-	if err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-
-	// Validate and override from flags
-	if timeout != "" {
-		if _, err := time.ParseDuration(timeout); err != nil {
-			return fmt.Errorf("invalid timeout format %q: %w", timeout, err)
-		}
-		cfg.Timeout = timeout
-	}
-	if retries < 0 {
-		return fmt.Errorf("retries must be non-negative, got %d", retries)
-	}
-	if retries > 0 {
-		cfg.Retries = retries
 	}
 
 	if err := session.EnsureLogDir(); err != nil {
@@ -144,7 +120,6 @@ func runRun(cmd *cobra.Command, specPath, timeout string, retries int) error {
 		WorktreePath: wt.Path,
 		HomeDir:      home,
 		SpecPath:     absSpec,
-		Timeout:      cfg.Timeout,
 		Interactive:  true,
 	})
 
@@ -161,6 +136,6 @@ func runRun(cmd *cobra.Command, specPath, timeout string, retries int) error {
 }
 
 func fireNotification(_ *session.Session) {
-	// Best-effort notification via claude-notify.
-	// Implementation deferred to notification integration.
+	// TODO: Implement notification when session completes.
+	// Placeholder for future integration with system notifications.
 }

@@ -67,7 +67,7 @@ Claude is prompted to follow these quality gates before claiming completion:
 6. **Commit hygiene** - Atomic commits with conventional messages
 7. **/review-code** - Grade A from code review
 
-These are advisory instructions to Claude. The tool auto-detects gate commands based on project files (go.mod, package.json, Makefile) but does not enforce their passage.
+These are advisory instructions to Claude, not enforced checks.
 
 ## Advisory Action Blocking
 
@@ -82,20 +82,6 @@ The container includes PreToolUse hooks that advise Claude against external side
 Read operations are allowed (gh pr view, curl GET, etc.).
 
 > **Important**: Hooks are advisory. Claude can choose to ignore them. Always review changes before running `ship`.
-
-## Configuration
-
-Create `.claude-sandbox.yaml` in your project to override gate commands:
-
-```yaml
-gates:
-  build: "make build"
-  lint: "make lint"
-  test: "make test-all"
-  security: "make security-scan"
-retries: 5
-timeout: "4h"
-```
 
 ## License
 

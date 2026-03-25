@@ -26,7 +26,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	wt, err := worktree.Detect(cwd)
 	if err != nil {
-		return fmt.Errorf("not inside a git worktree")
+		return fmt.Errorf("not inside a git worktree: %w", err)
 	}
 
 	sess, err := session.Load(wt.Path)

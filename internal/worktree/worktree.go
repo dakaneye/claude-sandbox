@@ -190,6 +190,10 @@ func (w *Worktree) IsSandbox() bool {
 
 func randomHash(n int) string {
 	bytes := make([]byte, n)
-	_, _ = rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		// crypto/rand.Read should never fail on modern systems.
+		// If it does, that indicates a serious system problem.
+		panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
+	}
 	return hex.EncodeToString(bytes)[:n]
 }

@@ -22,7 +22,6 @@ type RunOptions struct {
 	WorktreePath string
 	HomeDir      string
 	SpecPath     string
-	Timeout      string
 	Interactive  bool
 }
 
