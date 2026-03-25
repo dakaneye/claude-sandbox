@@ -1,0 +1,7 @@
+FROM claude-sandbox:base
+
+# Install Claude Code globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Verify installation
+RUN claude --version || echo "Claude Code installed"
