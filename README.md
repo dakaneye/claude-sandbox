@@ -4,7 +4,14 @@ Sandboxed execution environment for autonomous Claude Code implementation.
 
 ## Overview
 
-`claude-sandbox` enables spec-driven development where Claude implements features autonomously in an isolated container with quality gates, while blocking external side effects until human review.
+`claude-sandbox` enables spec-driven development where Claude implements features autonomously in an isolated container. The tool provides:
+
+- **Git worktree isolation** - Each sandbox runs in its own worktree with a dedicated branch
+- **Container execution** - Claude runs inside a Docker container with controlled mounts
+- **Advisory quality gates** - Claude is prompted to follow quality gates (build, lint, test, security, etc.)
+- **Advisory action blocking** - PreToolUse hooks warn about external side effects
+
+> **Note**: Quality gates and action blocking are advisory. Claude is instructed to follow them but enforcement is prompt-based, not hard-coded. Human review before `ship` remains essential.
 
 ## Installation
 
@@ -48,9 +55,9 @@ claude-sandbox ship
 | `stop` | Stop running session |
 | `clean` | Remove stale worktrees |
 
-## Quality Gates
+## Advisory Quality Gates
 
-Claude cannot claim completion until all gates pass:
+Claude is prompted to follow these quality gates before claiming completion:
 
 1. **Build** - Project builds successfully
 2. **Lint** - No linting errors
@@ -60,17 +67,21 @@ Claude cannot claim completion until all gates pass:
 6. **Commit hygiene** - Atomic commits with conventional messages
 7. **/review-code** - Grade A from code review
 
-## External Action Blocking
+These are advisory instructions to Claude. The tool auto-detects gate commands based on project files (go.mod, package.json, Makefile) but does not enforce their passage.
 
-The sandbox blocks actions that would affect external systems:
+## Advisory Action Blocking
 
-- `git push` - blocked
-- `gh pr create` - blocked
-- `gh issue comment` - blocked
-- `curl -X POST` - blocked
-- Linear MCP writes - blocked
+The container includes PreToolUse hooks that advise Claude against external side effects:
+
+- `git push` - advised against
+- `gh pr create` - advised against
+- `gh issue comment` - advised against
+- `curl -X POST` - advised against
+- Linear MCP writes - advised against
 
 Read operations are allowed (gh pr view, curl GET, etc.).
+
+> **Important**: Hooks are advisory. Claude can choose to ignore them. Always review changes before running `ship`.
 
 ## Configuration
 
