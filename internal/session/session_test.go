@@ -16,7 +16,6 @@ func TestSession_SaveLoad(t *testing.T) {
 		SpecPath:     filepath.Join(dir, "spec.md"),
 		Status:       StatusRunning,
 		StartedAt:    time.Now(),
-		ContainerID:  "abc123",
 	}
 
 	// Save
@@ -163,27 +162,6 @@ func TestNew_IDFormat(t *testing.T) {
 	}
 }
 
-func TestSession_IsActive(t *testing.T) {
-	tests := []struct {
-		name   string
-		status Status
-		want   bool
-	}{
-		{"running", StatusRunning, true},
-		{"success", StatusSuccess, false},
-		{"blocked", StatusBlocked, false},
-		{"failed", StatusFailed, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Session{Status: tt.status}
-			if got := s.IsActive(); got != tt.want {
-				t.Errorf("IsActive() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestSession_Duration_WhileRunning(t *testing.T) {
 	s := &Session{

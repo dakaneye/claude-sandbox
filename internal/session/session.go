@@ -19,7 +19,6 @@ type Status string
 const (
 	StatusRunning Status = "running"
 	StatusSuccess Status = "success"
-	StatusBlocked Status = "blocked"
 	StatusFailed  Status = "failed"
 )
 
@@ -31,7 +30,6 @@ type Session struct {
 	Status       Status    `json:"status"`
 	StartedAt    time.Time `json:"started_at"`
 	CompletedAt  time.Time `json:"completed_at,omitempty"`
-	ContainerID  string    `json:"container_id,omitempty"`
 	LogPath      string    `json:"log_path,omitempty"`
 	Error        string    `json:"error,omitempty"`
 }
@@ -112,11 +110,6 @@ func (s *Session) Duration() time.Duration {
 		end = time.Now()
 	}
 	return end.Sub(s.StartedAt)
-}
-
-// IsActive returns true if the session is still running.
-func (s *Session) IsActive() bool {
-	return s.Status == StatusRunning
 }
 
 // EnsureLogDir creates the session log directory.

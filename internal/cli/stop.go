@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/samueldacanay/claude-sandbox/internal/session"
 	"github.com/samueldacanay/claude-sandbox/internal/worktree"
@@ -33,15 +32,6 @@ func runStop(cmd *cobra.Command, args []string) error {
 	sess, err := session.FindActive(wt.Path)
 	if err != nil {
 		return fmt.Errorf("no active session: %w", err)
-	}
-
-	if sess.ContainerID != "" {
-		cmd.Printf("Stopping container %s...\n", sess.ContainerID[:12])
-		stopCmd := exec.Command("docker", "stop", sess.ContainerID)
-		// Ignore error - container may already be stopped or removed
-		if err := stopCmd.Run(); err != nil {
-			cmd.PrintErrf("Warning: failed to stop container: %v\n", err)
-		}
 	}
 
 	sess.Complete(session.StatusFailed)
