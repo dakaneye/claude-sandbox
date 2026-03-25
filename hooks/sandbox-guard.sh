@@ -1,11 +1,28 @@
 #!/usr/bin/env bash
 # sandbox-guard.sh - Block external side effects in sandbox mode
-# Exit 0 = allow, Exit 2 = block
+#
+# PURPOSE:
+#   PreToolUse hook for Claude Code that blocks write operations in sandbox mode.
+#   Input format: JSON with "tool_name" and "tool_input" fields.
+#
+# EXIT CODES:
+#   0 = allow operation
+#   2 = block operation
+#
+# SECURITY NOTES:
+#   - Pattern matching provides defense-in-depth, not cryptographic security
+#   - Determined attackers may find bypasses (obfuscation, encoding, etc.)
+#   - This hook is part of a layered security model, not the sole protection
+#   - Regular review and updates of patterns recommended
+#
 set -euo pipefail
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 TOOL_INPUT=$(echo "$INPUT" | jq -r '.tool_input // empty')
+
+# Early validation - allow empty values to pass through
+[[ -z "$TOOL_NAME" ]] && exit 0
 
 # ============================================
 # MCP Tool Gates
@@ -39,6 +56,9 @@ fi
 # ============================================
 if [[ "$TOOL_NAME" == "Bash" ]]; then
     CMD=$(echo "$TOOL_INPUT" | jq -r '.command // empty')
+
+    # Early validation - allow empty command
+    [[ -z "$CMD" ]] && exit 0
 
     # --- Always blocked (catastrophic) ---
     CATASTROPHIC=(
@@ -89,13 +109,21 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
 
     # --- HTTP write methods ---
     HTTP_WRITE_PATTERNS=(
+        # curl -X / --request forms
         'curl.*-X\s*POST'
         'curl.*-X\s*PUT'
         'curl.*-X\s*PATCH'
         'curl.*-X\s*DELETE'
+        'curl.*--request\s+(POST|PUT|PATCH|DELETE)'
+        # curl data/upload forms
         'curl.*--data'
         'curl.*-d\s'
         'curl.*--json'
+        'curl.*-F'
+        'curl.*--form'
+        'curl.*--upload-file'
+        'curl.*-T\s'
+        # wget write forms
         'wget.*--post-data'
         'wget.*--post-file'
     )
