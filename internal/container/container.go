@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strings"
 )
 
 const (
@@ -21,7 +21,6 @@ type RunOptions struct {
 	Image        string
 	WorktreePath string
 	HomeDir      string
-	APIKey       string
 	SpecPath     string
 	Timeout      string
 	Interactive  bool
@@ -49,7 +48,8 @@ func BuildRunArgs(opts RunOptions) []string {
 	args = append(args, "-v", HistoryVolumeName+":/home/claude/.claude/history")
 
 	// Environment variables
-	args = append(args, "-e", "ANTHROPIC_API_KEY="+opts.APIKey)
+	// Pass API key via environment inheritance (not visible in ps aux)
+	args = append(args, "-e", "ANTHROPIC_API_KEY")
 	args = append(args, "-e", "HOME=/home/claude")
 
 	// Working directory
@@ -67,11 +67,9 @@ func Run(ctx context.Context, opts RunOptions) error {
 		opts.Image = DefaultImage
 	}
 
-	if opts.APIKey == "" {
-		opts.APIKey = os.Getenv("ANTHROPIC_API_KEY")
-		if opts.APIKey == "" {
-			return fmt.Errorf("ANTHROPIC_API_KEY not set")
-		}
+	// Validate API key is set (will be passed via environment inheritance)
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		return fmt.Errorf("ANTHROPIC_API_KEY not set")
 	}
 
 	if opts.HomeDir == "" {
@@ -97,7 +95,18 @@ func Run(ctx context.Context, opts RunOptions) error {
 }
 
 func buildClaudeCommand(specPath string) string {
-	return fmt.Sprintf(`claude --dangerously-skip-permissions "Implement the spec at %s. Follow quality gates: build, lint, test, security, spec coverage, commit hygiene, and /review-code with grade A. Write COMPLETION.md when done."`, specPath)
+	// Shell-escape the spec path to prevent injection
+	escaped := shellEscape(specPath)
+	return fmt.Sprintf(`claude --dangerously-skip-permissions "Implement the spec at %s. Follow quality gates: build, lint, test, security, spec coverage, commit hygiene, and /review-code with grade A. Write COMPLETION.md when done."`, escaped)
+}
+
+// shellEscape escapes a string for safe use in shell commands.
+// Uses single quotes and escapes any embedded single quotes.
+func shellEscape(s string) string {
+	// Single quotes prevent all shell interpretation except for single quotes themselves.
+	// To include a single quote: end the single-quoted string, add an escaped single quote, restart.
+	// 'foo'\''bar' → foo'bar
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // ImageExists checks if the sandbox image exists locally.
@@ -117,8 +126,3 @@ func EnsureHistoryVolume() error {
 	return cmd.Run()
 }
 
-// GetSessionLogPath returns the path for session logs.
-func GetSessionLogPath(sessionID string) string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".claude", "sandbox-sessions", sessionID+".log")
-}

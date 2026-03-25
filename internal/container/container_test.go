@@ -61,7 +61,6 @@ func TestBuildRunArgs(t *testing.T) {
 		Image:        "claude-sandbox:latest",
 		WorktreePath: "/tmp/worktree",
 		HomeDir:      "/Users/test",
-		APIKey:       "sk-test",
 		SpecPath:     "/tmp/worktree/spec.md",
 		Interactive:  true,
 	}
@@ -97,13 +96,13 @@ func TestBuildRunArgs(t *testing.T) {
 		t.Error("missing -it flags for interactive mode")
 	}
 
-	// Should set ANTHROPIC_API_KEY
+	// Should pass ANTHROPIC_API_KEY via environment inheritance (no value in args)
 	for i, arg := range args {
-		if arg == "-e" && i+1 < len(args) && strings.HasPrefix(args[i+1], "ANTHROPIC_API_KEY=") {
+		if arg == "-e" && i+1 < len(args) && args[i+1] == "ANTHROPIC_API_KEY" {
 			return // Found it
 		}
 	}
-	t.Error("missing ANTHROPIC_API_KEY environment variable")
+	t.Error("missing ANTHROPIC_API_KEY environment variable passthrough")
 }
 
 func TestBuildRunArgsNonInteractive(t *testing.T) {
@@ -111,7 +110,6 @@ func TestBuildRunArgsNonInteractive(t *testing.T) {
 		Image:        "claude-sandbox:latest",
 		WorktreePath: "/tmp/worktree",
 		HomeDir:      "/Users/test",
-		APIKey:       "sk-test",
 		SpecPath:     "/tmp/worktree/spec.md",
 		Interactive:  false,
 	}
@@ -176,6 +174,30 @@ func TestBuildClaudeCommand(t *testing.T) {
 	}
 	if !strings.Contains(cmd, "--dangerously-skip-permissions") {
 		t.Error("command should include --dangerously-skip-permissions")
+	}
+}
+
+func TestShellEscape(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"simple", "'simple'"},
+		{"with spaces", "'with spaces'"},
+		{"with'quote", "'with'\\''quote'"},
+		{"$(whoami)", "'$(whoami)'"},
+		{"`id`", "'`id`'"},
+		{"$HOME", "'$HOME'"},
+		{"a;rm -rf /", "'a;rm -rf /'"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := shellEscape(tt.input)
+			if got != tt.expected {
+				t.Errorf("shellEscape(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
 	}
 }
 
