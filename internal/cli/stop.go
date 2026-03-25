@@ -22,7 +22,7 @@ func newStopCommand() *cobra.Command {
 func runStop(cmd *cobra.Command, args []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("get working directory: %w", err)
 	}
 
 	wt, err := worktree.Detect(cwd)

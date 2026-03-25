@@ -40,7 +40,7 @@ func runClean(cmd *cobra.Command, repoPath string, force bool) error {
 
 	var sandboxWorktrees []worktree.Worktree
 	for _, wt := range worktrees {
-		if strings.HasPrefix(wt.Branch, "sandbox/") {
+		if wt.IsSandbox() {
 			sandboxWorktrees = append(sandboxWorktrees, wt)
 		}
 	}

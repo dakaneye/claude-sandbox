@@ -28,7 +28,7 @@ func newLogsCommand() *cobra.Command {
 func runLogs(cmd *cobra.Command, follow bool) error {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("get working directory: %w", err)
 	}
 
 	wt, err := worktree.Detect(cwd)
