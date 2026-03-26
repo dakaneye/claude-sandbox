@@ -35,7 +35,7 @@ cd container && ./build.sh --load
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.25.5
 - Docker
 - [apko](https://github.com/chainguard-dev/apko) (for container builds)
 
