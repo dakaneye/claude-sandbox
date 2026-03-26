@@ -40,6 +40,7 @@ cd container && ./build.sh --load
 - Go 1.25.5
 - Docker
 - [apko](https://github.com/chainguard-dev/apko) (for container builds)
+- [prpm](https://prpm.dev) (for code review skill)
 
 ## Quick Start
 

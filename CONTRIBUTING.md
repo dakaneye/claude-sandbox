@@ -32,7 +32,15 @@ Requires [apko](https://github.com/chainguard-dev/apko) for building the base im
 2. `make lint` passes (or `golangci-lint run ./...`)
 3. `go test -race ./...` passes
 4. `go mod tidy` produces no changes
-5. New functionality has tests
+5. `/review-code` achieves grade A
+6. New functionality has tests
+
+### Code Review Skill
+
+Install the review skill:
+```bash
+prpm install @dakaneye/dakaneye-review-code
+```
 
 ## Pull Requests
 

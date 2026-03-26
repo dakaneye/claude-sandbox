@@ -97,8 +97,14 @@ pre-commit install  # One-time setup
 
 ## Code Review
 
-Run `/review-code` before every commit. Must achieve grade A. This invokes the
-review-code skill which checks for bugs, security issues, and code quality.
+Run `/review-code` before every commit. Must achieve grade A.
+
+Install the skill:
+```bash
+prpm install @dakaneye/dakaneye-review-code
+```
+
+See: https://prpm.dev/packages/@dakaneye/dakaneye-review-code
 
 ## Dependencies
 
