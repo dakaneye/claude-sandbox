@@ -2,14 +2,14 @@
 package worktree
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/samueldacanay/claude-sandbox/internal/id"
 )
 
 // Worktree represents a git worktree.
@@ -38,7 +38,7 @@ func Create(repoPath string) (*Worktree, error) {
 	}
 
 	// Generate branch and path names
-	hash := randomHash(6)
+	hash := id.RandomHex(6)
 	date := time.Now().Format("2006-01-02")
 	branch := fmt.Sprintf("sandbox/%s-%s", date, hash)
 	worktreePath := fmt.Sprintf("%s-sandbox-%s", absRepo, hash)
@@ -186,14 +186,4 @@ func Detect(path string) (*Worktree, error) {
 // IsSandbox returns true if the worktree is a sandbox worktree.
 func (w *Worktree) IsSandbox() bool {
 	return strings.HasPrefix(w.Branch, "sandbox/")
-}
-
-func randomHash(n int) string {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		// crypto/rand.Read should never fail on modern systems.
-		// If it does, that indicates a serious system problem.
-		panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
-	}
-	return hex.EncodeToString(bytes)[:n]
 }

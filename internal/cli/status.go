@@ -1,11 +1,7 @@
 package cli
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/samueldacanay/claude-sandbox/internal/session"
-	"github.com/samueldacanay/claude-sandbox/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -19,14 +15,9 @@ func newStatusCommand() *cobra.Command {
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
-	cwd, err := os.Getwd()
+	wt, err := requireWorktree()
 	if err != nil {
-		return fmt.Errorf("get working directory: %w", err)
-	}
-
-	wt, err := worktree.Detect(cwd)
-	if err != nil {
-		return fmt.Errorf("not inside a git worktree: %w", err)
+		return err
 	}
 
 	sess, err := session.Load(wt.Path)

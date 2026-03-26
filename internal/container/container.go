@@ -2,6 +2,8 @@ package container
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,6 +16,9 @@ const (
 
 	// HistoryVolumeName is the Docker volume for Claude history persistence.
 	HistoryVolumeName = "claude-sandbox-history"
+
+	// ContainerNamePrefix is the prefix for sandbox container names.
+	ContainerNamePrefix = "claude-sandbox-"
 )
 
 // RunOptions configures container execution.
@@ -28,6 +33,9 @@ type RunOptions struct {
 // BuildRunArgs generates docker run arguments.
 func BuildRunArgs(opts RunOptions) []string {
 	args := []string{"run", "--rm"}
+
+	// Name the container for later reference (e.g., stop command)
+	args = append(args, "--name", ContainerName(opts.WorktreePath))
 
 	if opts.Interactive {
 		args = append(args, "-it")
@@ -123,5 +131,32 @@ func EnsureHistoryVolume() error {
 
 	cmd = exec.Command("docker", "volume", "create", HistoryVolumeName)
 	return cmd.Run()
+}
+
+// ContainerName generates a deterministic container name from the worktree path.
+func ContainerName(worktreePath string) string {
+	hash := sha256.Sum256([]byte(worktreePath))
+	return ContainerNamePrefix + hex.EncodeToString(hash[:])[:12]
+}
+
+// Stop stops a running sandbox container by worktree path.
+func Stop(worktreePath string) error {
+	name := ContainerName(worktreePath)
+	cmd := exec.Command("docker", "stop", name)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("stop container %s: %w", name, err)
+	}
+	return nil
+}
+
+// IsRunning checks if a sandbox container is running for the given worktree.
+func IsRunning(worktreePath string) bool {
+	name := ContainerName(worktreePath)
+	cmd := exec.Command("docker", "container", "inspect", "-f", "{{.State.Running}}", name)
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(output)) == "true"
 }
 

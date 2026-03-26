@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/samueldacanay/claude-sandbox/internal/worktree"
 	"github.com/spf13/cobra"
@@ -56,10 +55,7 @@ func runClean(cmd *cobra.Command, repoPath string, force bool) error {
 	}
 
 	if !force {
-		cmd.Print("\nRemove all? [y/N] ")
-		var response string
-		fmt.Scanln(&response)
-		if strings.ToLower(response) != "y" {
+		if !promptYesNo(cmd, "\nRemove all?", false) {
 			return nil
 		}
 	}

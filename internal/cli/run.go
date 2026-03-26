@@ -10,7 +10,6 @@ import (
 
 	"github.com/samueldacanay/claude-sandbox/internal/container"
 	"github.com/samueldacanay/claude-sandbox/internal/session"
-	"github.com/samueldacanay/claude-sandbox/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -54,14 +53,9 @@ func runRun(cmd *cobra.Command, specPath string) error {
 		return fmt.Errorf("spec not found: %s", absSpec)
 	}
 
-	cwd, err := os.Getwd()
+	wt, err := requireWorktree()
 	if err != nil {
-		return fmt.Errorf("get working directory: %w", err)
-	}
-
-	wt, err := worktree.Detect(cwd)
-	if err != nil {
-		return fmt.Errorf("not inside a git worktree: %w", err)
+		return err
 	}
 
 	if !container.ImageExists(container.DefaultImage) {

@@ -16,6 +16,7 @@ func setupTestRepo(t *testing.T) string {
 		{"git", "init"},
 		{"git", "config", "user.email", "test@test.com"},
 		{"git", "config", "user.name", "Test"},
+		{"git", "config", "commit.gpgsign", "false"},
 		{"touch", "README.md"},
 		{"git", "add", "."},
 		{"git", "commit", "-m", "initial"},

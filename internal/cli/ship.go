@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,14 +42,9 @@ The command:
 }
 
 func runShip(cmd *cobra.Command, skipReview, keepWorktree bool) error {
-	cwd, err := os.Getwd()
+	wt, err := requireWorktree()
 	if err != nil {
-		return fmt.Errorf("get working directory: %w", err)
-	}
-
-	wt, err := worktree.Detect(cwd)
-	if err != nil {
-		return fmt.Errorf("not inside a git worktree: %w", err)
+		return err
 	}
 
 	completionPath := filepath.Join(wt.Path, "COMPLETION.md")
@@ -110,27 +104,4 @@ func runShip(cmd *cobra.Command, skipReview, keepWorktree bool) error {
 	}
 
 	return nil
-}
-
-func promptYesNo(cmd *cobra.Command, question string, defaultYes bool) bool {
-	suffix := "[Y/n]"
-	if !defaultYes {
-		suffix = "[y/N]"
-	}
-
-	cmd.Printf("%s %s ", question, suffix)
-
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		// On stdin error (closed, EOF), return the safe default (no action)
-		return false
-	}
-	response = strings.TrimSpace(strings.ToLower(response))
-
-	if response == "" {
-		return defaultYes
-	}
-
-	return response == "y" || response == "yes"
 }

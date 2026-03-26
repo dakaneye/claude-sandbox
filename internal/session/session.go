@@ -1,13 +1,13 @@
 package session
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/samueldacanay/claude-sandbox/internal/id"
 )
 
 // logDirPath is the relative path from home directory to the session log directory.
@@ -36,19 +36,19 @@ type Session struct {
 
 // New creates a new session with a generated ID.
 func New(worktreePath, specPath string) (*Session, error) {
-	id := generateID()
+	sessionID := id.NewSessionID()
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("get home directory: %w", err)
 	}
 
 	return &Session{
-		ID:           id,
+		ID:           sessionID,
 		WorktreePath: worktreePath,
 		SpecPath:     specPath,
 		Status:       StatusRunning,
 		StartedAt:    time.Now(),
-		LogPath:      filepath.Join(home, logDirPath, id+".log"),
+		LogPath:      filepath.Join(home, logDirPath, sessionID+".log"),
 	}, nil
 }
 
@@ -125,15 +125,4 @@ func EnsureLogDir() error {
 	}
 
 	return nil
-}
-
-func generateID() string {
-	bytes := make([]byte, 8)
-	if _, err := rand.Read(bytes); err != nil {
-		// crypto/rand.Read should never fail on modern systems.
-		// If it does, that indicates a serious system problem.
-		panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
-	}
-	date := time.Now().Format("2006-01-02")
-	return fmt.Sprintf("%s-%s", date, hex.EncodeToString(bytes)[:6])
 }
