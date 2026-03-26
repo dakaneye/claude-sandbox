@@ -35,7 +35,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/samueldacanay/claude-sandbox
+        - github.com/dakaneye/claude-sandbox
 
 linters-settings:
   errcheck:

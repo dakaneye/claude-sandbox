@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/samueldacanay/claude-sandbox/internal/cli"
+	"github.com/dakaneye/claude-sandbox/internal/cli"
 )
 
 var version = "dev"

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samueldacanay/claude-sandbox/internal/id"
+	"github.com/dakaneye/claude-sandbox/internal/id"
 )
 
 // Worktree represents a git worktree.

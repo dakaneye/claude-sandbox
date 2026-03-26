@@ -1,4 +1,4 @@
-module github.com/samueldacanay/claude-sandbox
+module github.com/dakaneye/claude-sandbox
 
 go 1.25.5
 

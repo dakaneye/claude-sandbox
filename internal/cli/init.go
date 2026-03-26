@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/samueldacanay/claude-sandbox/internal/worktree"
+	"github.com/dakaneye/claude-sandbox/internal/worktree"
 )
 
 func newInitCommand() *cobra.Command {

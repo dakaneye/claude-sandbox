@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/samueldacanay/claude-sandbox/internal/session"
+	"github.com/dakaneye/claude-sandbox/internal/session"
 )
 
 func TestStopCommand_NotInWorktree(t *testing.T) {

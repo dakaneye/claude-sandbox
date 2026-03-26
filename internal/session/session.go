@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/samueldacanay/claude-sandbox/internal/id"
+	"github.com/dakaneye/claude-sandbox/internal/id"
 )
 
 // logDirPath is the relative path from home directory to the session log directory.

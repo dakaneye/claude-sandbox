@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/samueldacanay/claude-sandbox/internal/worktree"
+	"github.com/dakaneye/claude-sandbox/internal/worktree"
 )
 
 // requireWorktree detects the current git worktree from the working directory.
