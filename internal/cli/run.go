@@ -8,9 +8,10 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/spf13/cobra"
+
 	"github.com/samueldacanay/claude-sandbox/internal/container"
 	"github.com/samueldacanay/claude-sandbox/internal/session"
-	"github.com/spf13/cobra"
 )
 
 func newRunCommand() *cobra.Command {

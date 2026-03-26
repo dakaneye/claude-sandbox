@@ -1,5 +1,9 @@
 # claude-sandbox
 
+[![CI](https://github.com/dakaneye/claude-sandbox/actions/workflows/ci.yml/badge.svg)](https://github.com/dakaneye/claude-sandbox/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dakaneye/claude-sandbox)](https://goreportcard.com/report/github.com/dakaneye/claude-sandbox)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Sandboxed execution environment for autonomous Claude Code implementation.
 
 ## Overview
@@ -16,13 +20,24 @@ Sandboxed execution environment for autonomous Claude Code implementation.
 ## Installation
 
 ```bash
-# Build from source
+# Via go install (once released)
+go install github.com/dakaneye/claude-sandbox/cmd/claude-sandbox@latest
+
+# Or build from source
+git clone https://github.com/dakaneye/claude-sandbox.git
+cd claude-sandbox
 make build
 make install
 
 # Build container image (requires apko)
 cd container && ./build.sh --load
 ```
+
+### Prerequisites
+
+- Go 1.21+
+- Docker
+- [apko](https://github.com/chainguard-dev/apko) (for container builds)
 
 ## Quick Start
 

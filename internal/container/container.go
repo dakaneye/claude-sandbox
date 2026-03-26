@@ -159,4 +159,3 @@ func IsRunning(worktreePath string) bool {
 	}
 	return strings.TrimSpace(string(output)) == "true"
 }
-

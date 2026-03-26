@@ -3,9 +3,10 @@ package cli
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/samueldacanay/claude-sandbox/internal/container"
 	"github.com/samueldacanay/claude-sandbox/internal/session"
-	"github.com/spf13/cobra"
 )
 
 func newStopCommand() *cobra.Command {

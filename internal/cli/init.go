@@ -3,8 +3,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/samueldacanay/claude-sandbox/internal/worktree"
 	"github.com/spf13/cobra"
+
+	"github.com/samueldacanay/claude-sandbox/internal/worktree"
 )
 
 func newInitCommand() *cobra.Command {

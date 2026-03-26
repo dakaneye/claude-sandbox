@@ -162,7 +162,6 @@ func TestNew_IDFormat(t *testing.T) {
 	}
 }
 
-
 func TestSession_Duration_WhileRunning(t *testing.T) {
 	s := &Session{
 		Status:    StatusRunning,

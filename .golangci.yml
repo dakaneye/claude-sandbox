@@ -1,0 +1,51 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - misspell
+    - unconvert
+    - prealloc
+  disable:
+    # gosec has too many false positives for CLI tools that need exec.Command
+    - gosec
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # Ignore errcheck in test files
+      - path: _test\.go
+        linters:
+          - errcheck
+        text: ".*"
+      # Ignore unparam for cobra command signatures
+      - linters:
+          - unparam
+        text: "cmd is unused"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/samueldacanay/claude-sandbox
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+  govet:
+    disable:
+      - fieldalignment
+  misspell:
+    locale: US
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

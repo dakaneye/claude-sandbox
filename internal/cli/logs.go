@@ -5,8 +5,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/samueldacanay/claude-sandbox/internal/session"
 	"github.com/spf13/cobra"
+
+	"github.com/samueldacanay/claude-sandbox/internal/session"
 )
 
 func newLogsCommand() *cobra.Command {

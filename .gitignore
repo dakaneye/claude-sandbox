@@ -1,19 +1,29 @@
 # Build artifacts
 bin/
+dist/
 claude-sandbox
+*.exe
+coverage.out
 
 # Container build artifacts
 container/*.tar
+container/sbom-*.spdx.json
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# apko build artifacts
-container/sbom-*.spdx.json
+# Test artifacts
+*.test
+*.prof
+
+# Temporary files
+tmp/
+*.tmp
