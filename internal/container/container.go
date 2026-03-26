@@ -111,7 +111,9 @@ func Run(ctx context.Context, opts RunOptions) error {
 func buildClaudeCommand(specPath string) string {
 	// Shell-escape the spec path to prevent injection
 	escaped := shellEscape(specPath)
-	return fmt.Sprintf(`claude --dangerously-skip-permissions "Implement the spec at %s. Follow quality gates: build, lint, test, security, spec coverage, commit hygiene. Run /review-code and fix ALL issues until you achieve grade A (do not stop at B or lower). Write COMPLETION.md when done."`, escaped)
+	// Idempotent prompt: if COMPLETION.md exists with grade A, verify gates still pass.
+	// Otherwise implement/fix until grade A is achieved.
+	return fmt.Sprintf(`claude --dangerously-skip-permissions "Implement the spec at %s. If COMPLETION.md exists showing grade A, verify all quality gates still pass. Otherwise, implement or continue fixing until ALL quality gates pass: build, lint, test, security, spec coverage, commit hygiene, and /review-code grade A. Keep iterating on /review-code feedback until grade A (do not stop at B or lower). Update COMPLETION.md with final status."`, escaped)
 }
 
 // shellEscape escapes a string for safe use in shell commands.
