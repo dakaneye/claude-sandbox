@@ -4,6 +4,10 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE_NAME="${IMAGE_NAME:-claude-sandbox}"
 TAG="${TAG:-latest}"
+TAR_FILE="${SCRIPT_DIR}/${IMAGE_NAME}-base.tar"
+
+# Cleanup trap for tar file
+trap 'rm -f "$TAR_FILE"' EXIT
 
 usage() {
     cat <<EOF
@@ -29,10 +33,6 @@ main() {
     local push=""
     local arch=""
     local prebake=true
-    local tar_file="${SCRIPT_DIR}/${IMAGE_NAME}-base.tar"
-
-    # Cleanup trap for tar file
-    trap 'rm -f "$tar_file"' EXIT
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -47,7 +47,7 @@ main() {
 
     echo "Building claude-sandbox base image..."
 
-    local apko_args=("build" "${SCRIPT_DIR}/claude-sandbox.apko.yaml" "${IMAGE_NAME}:base" "$tar_file")
+    local apko_args=("build" "${SCRIPT_DIR}/claude-sandbox.apko.yaml" "${IMAGE_NAME}:base" "$TAR_FILE")
 
     if [[ -n "$arch" ]]; then
         apko_args+=("--arch" "$arch")
@@ -59,23 +59,34 @@ main() {
     }
 
     echo "Loading base image into Docker..."
-    [[ -f "$tar_file" ]] || {
-        echo "Error: tar file not found at $tar_file" >&2
+    [[ -f "$TAR_FILE" ]] || {
+        echo "Error: tar file not found at $TAR_FILE" >&2
         exit 1
     }
-    docker load < "$tar_file" || {
+    docker load < "$TAR_FILE" || {
         echo "Error: failed to load image into Docker" >&2
         exit 1
     }
 
+    # Determine the base image tag for current architecture
+    local current_arch
+    current_arch=$(uname -m)
+    case "$current_arch" in
+        x86_64) current_arch="amd64" ;;
+        aarch64|arm64) current_arch="arm64" ;;
+    esac
+    local base_tag="${IMAGE_NAME}:base-${current_arch}"
+
     if [[ "$prebake" == true ]]; then
         echo "Pre-baking Claude Code into image..."
-        docker build -t "${IMAGE_NAME}:${TAG}" -f "${SCRIPT_DIR}/Dockerfile.prebake" "${SCRIPT_DIR}" || {
+        docker build -t "${IMAGE_NAME}:${TAG}" \
+            --build-arg BASE_IMAGE="${base_tag}" \
+            -f "${SCRIPT_DIR}/Dockerfile.prebake" "${SCRIPT_DIR}" || {
             echo "Error: docker build failed" >&2
             exit 1
         }
     else
-        docker tag "${IMAGE_NAME}:base" "${IMAGE_NAME}:${TAG}"
+        docker tag "${base_tag}" "${IMAGE_NAME}:${TAG}"
     fi
 
     if [[ "$load" == true ]]; then

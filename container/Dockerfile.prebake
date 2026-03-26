@@ -1,4 +1,7 @@
-FROM claude-sandbox:base
+ARG BASE_IMAGE=claude-sandbox:base-arm64
+FROM ${BASE_IMAGE}
+
+SHELL ["/bin/bash", "-c"]
 
 # Install Claude Code globally and verify installation
 RUN npm install -g @anthropic-ai/claude-code && \

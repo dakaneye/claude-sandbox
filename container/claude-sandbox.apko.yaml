@@ -27,13 +27,11 @@ contents:
     # Cloud/infra tools
     - kubectl
     - terraform
-    - chainctl
     - gh
 
     # Dev utilities
     - git
     - make
-    - shellcheck
     - curl
     - wget
     - jq

@@ -61,6 +61,27 @@ cd container && ./build.sh --load
 - Use `t.TempDir()` for test directories (auto-cleanup)
 - Resolve symlinks with `filepath.EvalSymlinks()` for macOS compatibility
 
+## Quality Gates
+
+Before committing, all gates must pass:
+
+```bash
+# 1. Build
+make build
+
+# 2. Lint
+golangci-lint run ./...
+
+# 3. Tests
+go test ./...
+
+# 4. Tidy modules
+go mod tidy && git diff --exit-code go.mod go.sum
+
+# 5. Container image build
+cd container && ./build.sh --load
+```
+
 ## Dependencies
 
 - `github.com/spf13/cobra` - CLI framework
