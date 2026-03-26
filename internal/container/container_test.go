@@ -15,9 +15,11 @@ func TestBuildMounts(t *testing.T) {
 	mounts := BuildMounts(opts)
 
 	// Check for required mounts
+	// Note: skills NOT mounted - container uses pre-baked skills for quality gates
 	requiredSources := []string{
 		"/Users/test/.claude/settings.json",
 		"/Users/test/.claude/hooks",
+		"/Users/test/.claude/commands",
 		"/Users/test/.gitconfig",
 		"/Users/test/.ssh",
 		"/tmp/worktree",
@@ -196,6 +198,58 @@ func TestShellEscape(t *testing.T) {
 			got := shellEscape(tt.input)
 			if got != tt.expected {
 				t.Errorf("shellEscape(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestHostToContainerPath(t *testing.T) {
+	tests := []struct {
+		name         string
+		hostPath     string
+		worktreePath string
+		expected     string
+	}{
+		{
+			name:         "file in worktree root",
+			hostPath:     "/tmp/worktree/spec.md",
+			worktreePath: "/tmp/worktree",
+			expected:     "/workspace/spec.md",
+		},
+		{
+			name:         "file in subdirectory",
+			hostPath:     "/tmp/worktree/docs/specs/feature.md",
+			worktreePath: "/tmp/worktree",
+			expected:     "/workspace/docs/specs/feature.md",
+		},
+		{
+			name:         "worktree root itself",
+			hostPath:     "/tmp/worktree",
+			worktreePath: "/tmp/worktree",
+			expected:     "/workspace",
+		},
+		{
+			name:         "path outside worktree",
+			hostPath:     "/other/path/file.md",
+			worktreePath: "/tmp/worktree",
+			expected:     "/other/path/file.md",
+		},
+		{
+			name:         "worktree with trailing slash",
+			hostPath:     "/tmp/worktree/spec.md",
+			worktreePath: "/tmp/worktree/",
+			expected:     "/workspace/spec.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Normalize worktree path (remove trailing slash for consistent behavior)
+			worktree := strings.TrimSuffix(tt.worktreePath, "/")
+			got := hostToContainerPath(tt.hostPath, worktree)
+			if got != tt.expected {
+				t.Errorf("hostToContainerPath(%q, %q) = %q, want %q",
+					tt.hostPath, tt.worktreePath, got, tt.expected)
 			}
 		})
 	}

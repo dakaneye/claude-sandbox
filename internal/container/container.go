@@ -93,8 +93,11 @@ func Run(ctx context.Context, opts RunOptions) error {
 
 	args := BuildRunArgs(opts)
 
+	// Convert host spec path to container path
+	containerSpecPath := hostToContainerPath(opts.SpecPath, opts.WorktreePath)
+
 	// Add the command to run Claude
-	claudeCmd := buildClaudeCommand(opts.SpecPath)
+	claudeCmd := buildClaudeCommand(containerSpecPath)
 	args = append(args, "/bin/bash", "-c", claudeCmd)
 
 	cmd := exec.CommandContext(ctx, "docker", args...)
@@ -118,6 +121,21 @@ func shellEscape(s string) string {
 	// To include a single quote: end the single-quoted string, add an escaped single quote, restart.
 	// 'foo'\''bar' → foo'bar
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// hostToContainerPath converts a host path to a container path.
+// Paths inside the worktree are mapped to /workspace.
+func hostToContainerPath(hostPath, worktreePath string) string {
+	if strings.HasPrefix(hostPath, worktreePath) {
+		relPath := strings.TrimPrefix(hostPath, worktreePath)
+		relPath = strings.TrimPrefix(relPath, "/")
+		if relPath == "" {
+			return "/workspace"
+		}
+		return "/workspace/" + relPath
+	}
+	// Path outside worktree - return as-is (won't be accessible in container)
+	return hostPath
 }
 
 // ImageExists checks if the sandbox image exists locally.

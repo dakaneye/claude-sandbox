@@ -39,11 +39,8 @@ func BuildMounts(opts MountOptions) []Mount {
 			Target:   "/home/claude/.claude/commands",
 			ReadOnly: true,
 		},
-		{
-			Source:   filepath.Join(home, ".claude", "skills"),
-			Target:   "/home/claude/.claude/skills",
-			ReadOnly: true,
-		},
+		// Note: skills NOT mounted - container uses pre-baked skills
+		// This ensures /review-code is always available for quality gates
 		{
 			Source:   filepath.Join(home, ".gitconfig"),
 			Target:   "/home/claude/.gitconfig",
