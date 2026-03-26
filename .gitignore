@@ -30,3 +30,6 @@ tmp/
 
 # Internal dev docs
 docs/
+
+# PRPM lock file (local development artifact)
+prpm.lock

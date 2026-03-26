@@ -101,4 +101,4 @@ archs:
 annotations:
   org.opencontainers.image.title: claude-sandbox
   org.opencontainers.image.description: Sandboxed environment for autonomous Claude Code execution
-  org.opencontainers.image.source: https://github.com/samueldacanay/claude-sandbox
+  org.opencontainers.image.source: https://github.com/dakaneye/claude-sandbox
