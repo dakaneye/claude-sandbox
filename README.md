@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/dakaneye/claude-sandbox/actions/workflows/ci.yml/badge.svg)](https://github.com/dakaneye/claude-sandbox/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dakaneye/claude-sandbox)](https://goreportcard.com/report/github.com/dakaneye/claude-sandbox)
+[![Go Reference](https://pkg.go.dev/badge/github.com/dakaneye/claude-sandbox.svg)](https://pkg.go.dev/github.com/dakaneye/claude-sandbox)
+[![Release](https://img.shields.io/github/v/release/dakaneye/claude-sandbox)](https://github.com/dakaneye/claude-sandbox/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Sandboxed execution environment for autonomous Claude Code implementation.
