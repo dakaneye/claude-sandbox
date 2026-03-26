@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -90,9 +91,8 @@ func runRun(cmd *cobra.Command, specPath string) error {
 	cmd.Printf("  Spec:      %s\n", specPath)
 	cmd.Printf("  Worktree:  %s\n", wt.Path)
 	cmd.Printf("  Container: %s\n", container.DefaultImage)
+	cmd.Printf("  Log:       %s\n", sess.LogPath)
 	cmd.Println()
-	cmd.Println("Claude is working. You'll be notified on completion.")
-	cmd.Printf("Session log: %s\n", sess.LogPath)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -102,7 +102,8 @@ func runRun(cmd *cobra.Command, specPath string) error {
 	defer signal.Stop(sigChan)
 	go func() {
 		<-sigChan
-		cmd.Println("\nReceived interrupt, stopping...")
+		fmt.Print("\r\033[K") // Clear the spinner line
+		cmd.Println("Received interrupt, stopping...")
 		cancel()
 	}()
 
@@ -110,20 +111,44 @@ func runRun(cmd *cobra.Command, specPath string) error {
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}
-	runErr := container.Run(ctx, container.RunOptions{
-		Image:        container.DefaultImage,
-		WorktreePath: wt.Path,
-		HomeDir:      home,
-		SpecPath:     absSpec,
-		Interactive:  false, // Non-interactive, just wait for completion
-	})
 
-	if runErr != nil {
-		sess.Complete(session.StatusFailed)
-		sess.Error = runErr.Error()
-	} else {
-		sess.Complete(session.StatusSuccess)
+	// Run container in background and show spinner
+	done := make(chan error, 1)
+	go func() {
+		done <- container.Run(ctx, container.RunOptions{
+			Image:        container.DefaultImage,
+			WorktreePath: wt.Path,
+			HomeDir:      home,
+			SpecPath:     absSpec,
+			Interactive:  false,
+		})
+	}()
+
+	// Spinner with elapsed time
+	spinChars := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	start := time.Now()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	i := 0
+	for {
+		select {
+		case runErr := <-done:
+			fmt.Print("\r\033[K") // Clear spinner line
+			elapsed := time.Since(start).Round(time.Second)
+			if runErr != nil {
+				sess.Complete(session.StatusFailed)
+				sess.Error = runErr.Error()
+				cmd.Printf("✗ Failed after %s\n", elapsed)
+			} else {
+				sess.Complete(session.StatusSuccess)
+				cmd.Printf("✓ Completed in %s\n", elapsed)
+			}
+			return runErr
+		case <-ticker.C:
+			elapsed := time.Since(start).Round(time.Second)
+			fmt.Printf("\r%s Claude working... %s", spinChars[i%len(spinChars)], elapsed)
+			i++
+		}
 	}
-
-	return runErr
 }
