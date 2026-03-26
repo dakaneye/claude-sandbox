@@ -15,10 +15,8 @@ func TestBuildMounts(t *testing.T) {
 	mounts := BuildMounts(opts)
 
 	// Check for required mounts
-	// Note: skills NOT mounted - container uses pre-baked skills for quality gates
+	// Note: settings.json, hooks, skills NOT mounted - container uses pre-baked config
 	requiredSources := []string{
-		"/Users/test/.claude/settings.json",
-		"/Users/test/.claude/hooks",
 		"/Users/test/.claude/commands",
 		"/Users/test/.gitconfig",
 		"/Users/test/.ssh",
@@ -52,8 +50,8 @@ func TestBuildMounts(t *testing.T) {
 
 	// Check that config mounts are read-only
 	for _, m := range mounts {
-		if strings.Contains(m.Source, ".claude/settings.json") && !m.ReadOnly {
-			t.Error("settings.json should be read-only")
+		if strings.Contains(m.Source, ".claude/commands") && !m.ReadOnly {
+			t.Error("commands should be read-only")
 		}
 	}
 }

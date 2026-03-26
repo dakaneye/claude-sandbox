@@ -115,7 +115,7 @@ func runRun(cmd *cobra.Command, specPath string) error {
 		WorktreePath: wt.Path,
 		HomeDir:      home,
 		SpecPath:     absSpec,
-		Interactive:  true,
+		Interactive:  false, // Non-interactive, just wait for completion
 	})
 
 	if runErr != nil {

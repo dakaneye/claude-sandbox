@@ -15,6 +15,23 @@ WORKDIR /home/claude
 RUN prpm install @dakaneye/dakaneye-review-code --as claude && \
     test -d .claude/skills/dakaneye-review-code
 
+# Pre-configure Claude Code to skip onboarding prompts
+# - hasCompletedOnboarding: skip first-run wizard
+# - theme: pre-select dark mode
+# - hasTrustDialogAccepted: skip folder trust prompt
+# - autoUpdaterStatus: disable update checks
+RUN cat > .claude/settings.json << 'EOF'
+{
+  "hasCompletedOnboarding": true,
+  "theme": "dark",
+  "hasTrustDialogAccepted": true,
+  "autoUpdaterStatus": "disabled",
+  "permissions": {
+    "allow": ["Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "Read", "Glob", "Grep", "WebFetch", "WebSearch"]
+  }
+}
+EOF
+
 # Create global CLAUDE.md that references the pre-installed skill
 # This makes /review-code available to all sandboxed Claude sessions
 RUN cat > .claude/CLAUDE.md << 'EOF'

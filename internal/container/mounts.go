@@ -23,24 +23,21 @@ func BuildMounts(opts MountOptions) []Mount {
 	home := opts.HomeDir
 
 	mounts := []Mount{
-		// Read-only config mounts
-		{
-			Source:   filepath.Join(home, ".claude", "settings.json"),
-			Target:   "/home/claude/.claude/settings.json",
-			ReadOnly: true,
-		},
-		{
-			Source:   filepath.Join(home, ".claude", "hooks"),
-			Target:   "/home/claude/.claude/hooks",
-			ReadOnly: true,
-		},
+		// Note: settings.json NOT mounted - container uses pre-baked settings
+		// that skip onboarding and have permissions pre-configured
+		//
+		// Note: hooks NOT mounted - container should run autonomously
+		// without host-specific hooks that might interfere
+		//
+		// Note: skills NOT mounted - container uses pre-baked skills
+		// This ensures /review-code is always available for quality gates
+		//
+		// Commands are mounted so user can use custom slash commands
 		{
 			Source:   filepath.Join(home, ".claude", "commands"),
 			Target:   "/home/claude/.claude/commands",
 			ReadOnly: true,
 		},
-		// Note: skills NOT mounted - container uses pre-baked skills
-		// This ensures /review-code is always available for quality gates
 		{
 			Source:   filepath.Join(home, ".gitconfig"),
 			Target:   "/home/claude/.gitconfig",
