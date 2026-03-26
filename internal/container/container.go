@@ -62,6 +62,10 @@ func BuildRunArgs(opts RunOptions) []string {
 	// Working directory
 	args = append(args, "--workdir", "/workspace")
 
+	// Clear entrypoint since base image has /bin/bash as entrypoint
+	// and we provide our own command
+	args = append(args, "--entrypoint", "")
+
 	// Image
 	args = append(args, opts.Image)
 
