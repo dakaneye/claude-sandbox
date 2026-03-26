@@ -23,12 +23,8 @@ repos:
         pass_filenames: false
         types: [go]
 
-      - id: go-test
-        name: go test
-        entry: go test -race ./...
-        language: system
-        pass_filenames: false
-        types: [go]
+      # Note: go test removed - git worktree tests fail in pre-commit stash context
+      # Tests run in CI instead
 
       - id: go-mod-tidy
         name: go mod tidy

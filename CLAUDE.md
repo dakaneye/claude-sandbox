@@ -82,6 +82,16 @@ go mod tidy && git diff --exit-code go.mod go.sum
 cd container && ./build.sh --load
 ```
 
+## Pre-commit Hooks
+
+Pre-commit runs build, lint, and tidy automatically. Tests are excluded because
+git worktree tests fail in pre-commit's stash context. Run `go test ./...`
+manually before pushing, or rely on CI.
+
+```bash
+pre-commit install  # One-time setup
+```
+
 ## Dependencies
 
 - `github.com/spf13/cobra` - CLI framework
