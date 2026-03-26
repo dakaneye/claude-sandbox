@@ -124,12 +124,5 @@ func runRun(cmd *cobra.Command, specPath string) error {
 		sess.Complete(session.StatusSuccess)
 	}
 
-	fireNotification(sess)
-
 	return runErr
-}
-
-func fireNotification(_ *session.Session) {
-	// TODO: Implement notification when session completes.
-	// Placeholder for future integration with system notifications.
 }

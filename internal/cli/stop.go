@@ -25,7 +25,7 @@ func runStop(cmd *cobra.Command, args []string) error {
 
 	sess, err := session.FindActive(wt.Path)
 	if err != nil {
-		return fmt.Errorf("no active session: %w", err)
+		return fmt.Errorf("no active session in this worktree: %w", err)
 	}
 
 	// Stop the Docker container if running
