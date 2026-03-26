@@ -111,9 +111,24 @@ func Run(ctx context.Context, opts RunOptions) error {
 func buildClaudeCommand(specPath string) string {
 	// Shell-escape the spec path to prevent injection
 	escaped := shellEscape(specPath)
-	// Idempotent prompt: if COMPLETION.md exists with grade A, verify gates still pass.
-	// Otherwise implement/fix until grade A is achieved.
-	return fmt.Sprintf(`claude --dangerously-skip-permissions "Implement the spec at %s. If COMPLETION.md exists showing grade A, verify all quality gates still pass. Otherwise, implement or continue fixing until ALL quality gates pass: build, lint, test, security, spec coverage, commit hygiene, and /review-code grade A. Keep iterating on /review-code feedback until grade A (do not stop at B or lower). Update COMPLETION.md with final status."`, escaped)
+	// Holistic prompt: assess current state, do only what's needed to reach grade A
+	return fmt.Sprintf(`claude --dangerously-skip-permissions "Your goal: get this project to pass all quality gates with /review-code grade A.
+
+Spec: %s
+
+First, assess the current state:
+- Check git status, existing code, COMPLETION.md, any prior work
+- Identify what's already done vs what's blocking grade A
+
+Then do only what's needed:
+- If not implemented, implement the spec
+- If implemented but failing gates, fix the failures
+- If passing gates but review grade < A, fix only the review feedback
+- If grade A, verify gates still pass
+
+Quality gates: build, lint, test, /review-code grade A.
+Keep iterating on review feedback until grade A (do not stop at B or lower).
+Update COMPLETION.md with final status."`, escaped)
 }
 
 // shellEscape escapes a string for safe use in shell commands.
