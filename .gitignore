@@ -28,8 +28,9 @@ Thumbs.db
 tmp/
 *.tmp
 
-# Internal dev docs
-docs/
+# Internal dev docs (but keep specs)
+docs/*
+!docs/specs/
 
 # PRPM lock file (local development artifact)
 prpm.lock
