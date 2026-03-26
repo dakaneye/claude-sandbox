@@ -81,7 +81,7 @@ go mod tidy && git diff --exit-code go.mod go.sum
 # 5. Container image build
 cd container && ./build.sh --load
 
-# 6. Code review (for significant changes)
+# 6. Code review (required - must be grade A)
 /review-code
 ```
 
@@ -97,8 +97,8 @@ pre-commit install  # One-time setup
 
 ## Code Review
 
-Run `/review-code` for significant changes. This invokes the review-code skill
-which checks for bugs, security issues, and code quality.
+Run `/review-code` before every commit. Must achieve grade A. This invokes the
+review-code skill which checks for bugs, security issues, and code quality.
 
 ## Dependencies
 
