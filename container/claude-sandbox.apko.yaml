@@ -9,6 +9,7 @@ contents:
     - wolfi-baselayout
     - ca-certificates-bundle
     - bash
+    - busybox      # Provides /bin/sh and other POSIX utilities
     - coreutils
     - findutils
 
