@@ -215,3 +215,210 @@ func TestRemove(t *testing.T) {
 		t.Error("name symlink still exists")
 	}
 }
+
+func TestCreateValidation(t *testing.T) {
+	repoPath := t.TempDir()
+
+	t.Run("empty worktree path", func(t *testing.T) {
+		_, err := Create(repoPath, CreateOptions{
+			WorktreePath: "",
+			Branch:       "sandbox/test",
+		})
+		if err == nil {
+			t.Error("expected error for empty worktree path")
+		}
+		if err.Error() != "worktree path required" {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("empty branch", func(t *testing.T) {
+		_, err := Create(repoPath, CreateOptions{
+			WorktreePath: "/path/to/worktree",
+			Branch:       "",
+		})
+		if err == nil {
+			t.Error("expected error for empty branch")
+		}
+		if err.Error() != "branch required" {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestGetActiveID(t *testing.T) {
+	repoPath := t.TempDir()
+
+	// No active file yet
+	_, err := GetActiveID(repoPath)
+	if err == nil {
+		t.Error("expected error when no active file exists")
+	}
+
+	// Create a session (which sets it as active)
+	sess, err := Create(repoPath, CreateOptions{
+		WorktreePath: "/path/to/worktree",
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Now active should return the session ID
+	activeID, err := GetActiveID(repoPath)
+	if err != nil {
+		t.Fatalf("GetActiveID failed: %v", err)
+	}
+	if activeID != sess.ID {
+		t.Errorf("expected active ID %q, got %q", sess.ID, activeID)
+	}
+}
+
+func TestSetActive(t *testing.T) {
+	repoPath := t.TempDir()
+	_ = EnsureDir(repoPath)
+
+	// Set active to a specific ID
+	if err := SetActive(repoPath, "test-session-id"); err != nil {
+		t.Fatalf("SetActive failed: %v", err)
+	}
+
+	// Verify it was set
+	activeID, err := GetActiveID(repoPath)
+	if err != nil {
+		t.Fatalf("GetActiveID failed: %v", err)
+	}
+	if activeID != "test-session-id" {
+		t.Errorf("expected active ID %q, got %q", "test-session-id", activeID)
+	}
+}
+
+func TestResolveSession_ExplicitID(t *testing.T) {
+	repoPath := t.TempDir()
+
+	sess, err := Create(repoPath, CreateOptions{
+		WorktreePath: "/path/to/worktree",
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Resolve by explicit ID
+	resolved, err := ResolveSession(repoPath, sess.ID)
+	if err != nil {
+		t.Fatalf("ResolveSession failed: %v", err)
+	}
+	if resolved.ID != sess.ID {
+		t.Errorf("expected ID %q, got %q", sess.ID, resolved.ID)
+	}
+}
+
+func TestResolveSession_ExplicitName(t *testing.T) {
+	repoPath := t.TempDir()
+
+	sess, err := Create(repoPath, CreateOptions{
+		WorktreePath: "/path/to/worktree",
+		Branch:       "sandbox/test",
+		Name:         "my-feature",
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Resolve by name
+	resolved, err := ResolveSession(repoPath, "my-feature")
+	if err != nil {
+		t.Fatalf("ResolveSession failed: %v", err)
+	}
+	if resolved.ID != sess.ID {
+		t.Errorf("expected ID %q, got %q", sess.ID, resolved.ID)
+	}
+}
+
+func TestResolveSession_SingleSessionAutoSelect(t *testing.T) {
+	repoPath := t.TempDir()
+
+	sess, err := Create(repoPath, CreateOptions{
+		WorktreePath: "/path/to/worktree",
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Resolve with empty string - should auto-select single session
+	resolved, err := ResolveSession(repoPath, "")
+	if err != nil {
+		t.Fatalf("ResolveSession failed: %v", err)
+	}
+	if resolved.ID != sess.ID {
+		t.Errorf("expected ID %q, got %q", sess.ID, resolved.ID)
+	}
+}
+
+func TestResolveSession_NoSessions(t *testing.T) {
+	repoPath := t.TempDir()
+	_ = EnsureDir(repoPath)
+
+	// Resolve with no sessions should error
+	_, err := ResolveSession(repoPath, "")
+	if err == nil {
+		t.Error("expected error when no sessions exist")
+	}
+	if err.Error() != "no sessions found. Run 'claude-sandbox spec' first" {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveSession_NotFound(t *testing.T) {
+	repoPath := t.TempDir()
+	_ = EnsureDir(repoPath)
+
+	// Create a session so we have something
+	_, err := Create(repoPath, CreateOptions{
+		WorktreePath: "/path/to/worktree",
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Try to resolve nonexistent ID
+	_, err = ResolveSession(repoPath, "nonexistent-id")
+	if err == nil {
+		t.Error("expected error for nonexistent session")
+	}
+}
+
+func TestRemoveClearsActive(t *testing.T) {
+	repoPath := t.TempDir()
+
+	sess, err := Create(repoPath, CreateOptions{
+		WorktreePath: "/path/to/worktree",
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Verify it's active
+	activeID, err := GetActiveID(repoPath)
+	if err != nil {
+		t.Fatalf("GetActiveID failed: %v", err)
+	}
+	if activeID != sess.ID {
+		t.Errorf("expected active ID %q, got %q", sess.ID, activeID)
+	}
+
+	// Remove the session
+	if err := Remove(repoPath, sess.ID); err != nil {
+		t.Fatalf("Remove failed: %v", err)
+	}
+
+	// Active should now fail (file deleted)
+	_, err = GetActiveID(repoPath)
+	if err == nil {
+		t.Error("expected error after removing active session")
+	}
+}
