@@ -75,9 +75,13 @@ func runExecute(cmd *cobra.Command, sessionFlag string) error {
 		return fmt.Errorf("PLAN.md not found in worktree: %s", planPath)
 	}
 
-	// Check container image exists
+	// Auto-build container image if missing
 	if !container.ImageExists(container.DefaultImage) {
-		return fmt.Errorf("container image not found: %s\nRun: cd container && ./build.sh --load", container.DefaultImage)
+		cmd.Println("Container image not found. Building...")
+		if err := container.Build(cmd.OutOrStdout(), false); err != nil {
+			return fmt.Errorf("build image: %w", err)
+		}
+		cmd.Println()
 	}
 
 	// Ensure log directory exists
