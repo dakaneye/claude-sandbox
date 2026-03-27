@@ -6,86 +6,110 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/dakaneye/claude-sandbox/internal/session"
+	"github.com/dakaneye/claude-sandbox/internal/state"
 )
 
 func newStatusCommand() *cobra.Command {
+	var sessionFlag string
+
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Show status of current sandbox session",
-		RunE:  runStatus,
+		Short: "Show status of sandbox session",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runStatus(cmd, sessionFlag)
+		},
 	}
+
+	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID or name")
 	return cmd
 }
 
-func runStatus(cmd *cobra.Command, args []string) error {
-	wt, err := requireWorktree()
+func runStatus(cmd *cobra.Command, sessionFlag string) error {
+	repoPath, err := findRepoRoot()
 	if err != nil {
 		return err
 	}
 
-	sess, err := session.Load(wt.Path)
+	sess, err := state.ResolveSession(repoPath, sessionFlag)
 	if err != nil {
-		cmd.Println("No session found in this worktree.")
-		return nil
+		return err
 	}
 
 	// Basic session info
 	cmd.Printf("Session: %s\n", sess.ID)
+	if sess.Name != "" {
+		cmd.Printf("Name:    %s\n", sess.Name)
+	}
+	cmd.Printf("Branch:  %s\n", sess.Branch)
 	cmd.Printf("Status:  %s\n", sess.Status)
-	cmd.Printf("Elapsed: %s\n", sess.Duration().Round(time.Second))
+	cmd.Printf("Path:    %s\n", sess.WorktreePath)
+
+	// Elapsed time
+	elapsed := time.Since(sess.CreatedAt)
+	if !sess.CompletedAt.IsZero() {
+		elapsed = sess.CompletedAt.Sub(sess.CreatedAt)
+	}
+	cmd.Printf("Elapsed: %s\n", elapsed.Round(time.Second))
 	cmd.Println()
 
-	// If completed, skip analysis
-	if sess.Status != session.StatusRunning {
-		if sess.Status == session.StatusSuccess {
-			cmd.Println("Session completed successfully. See COMPLETION.md")
-		} else {
-			cmd.Printf("Session failed: %s\n", sess.Error)
-		}
-		return nil
-	}
-
-	// Read log and analyze
-	logContent := readLogTail(sess.LogPath, 500)
-	if logContent == "" {
-		cmd.Println("Log not available yet")
-		return nil
-	}
-
-	if !claudeAvailable() {
-		cmd.Println("(Claude CLI not available for analysis)")
-		return nil
-	}
-
-	// Show spinner while analyzing
-	spinChars := []string{"|", "/", "-", "\\"}
-	done := make(chan string, 1)
-	ctx := cmd.Context()
-	go func() {
-		done <- analyzeLog(ctx, logContent)
-	}()
-
-	i := 0
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			fmt.Print("\r\033[K") // Clear spinner
-			return ctx.Err()
-		case analysis := <-done:
-			fmt.Print("\r\033[K") // Clear spinner
-			if analysis == "" {
-				cmd.Println("Could not analyze log")
-			} else {
-				cmd.Println(analysis)
-			}
+	// Status-specific handling
+	switch sess.Status {
+	case state.StatusSpeccing:
+		cmd.Println("Creating spec with Claude...")
+	case state.StatusReady:
+		cmd.Println("Session ready. Run 'claude-sandbox execute' to start.")
+	case state.StatusRunning:
+		// Read log and analyze
+		logContent := readLogTail(sess.LogPath, 500)
+		if logContent == "" {
+			cmd.Println("Execution in progress. Log not available yet.")
 			return nil
-		case <-ticker.C:
-			fmt.Printf("\r%s Analyzing...", spinChars[i%len(spinChars)])
-			i++
 		}
+
+		if !claudeAvailable() {
+			cmd.Println("Execution in progress. (Claude CLI not available for analysis)")
+			return nil
+		}
+
+		// Show spinner while analyzing
+		spinChars := []string{"|", "/", "-", "\\"}
+		done := make(chan string, 1)
+		ctx := cmd.Context()
+		go func() {
+			done <- analyzeLog(ctx, logContent)
+		}()
+
+		i := 0
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Print("\r\033[K") // Clear spinner
+				return ctx.Err()
+			case analysis := <-done:
+				fmt.Print("\r\033[K") // Clear spinner
+				if analysis == "" {
+					cmd.Println("Execution in progress.")
+				} else {
+					cmd.Println(analysis)
+				}
+				return nil
+			case <-ticker.C:
+				fmt.Printf("\r%s Analyzing...", spinChars[i%len(spinChars)])
+				i++
+			}
+		}
+	case state.StatusSuccess:
+		cmd.Println("✓ Session completed successfully. Run 'claude-sandbox ship' to create PR.")
+	case state.StatusFailed:
+		cmd.Printf("✗ Failed: %s\n", sess.Error)
+		cmd.Println("Run 'claude-sandbox execute' to retry.")
+	case state.StatusBlocked:
+		cmd.Println("⚠ Blocked: quality gates could not be satisfied.")
+		cmd.Println("Check COMPLETION.md for details. Run 'claude-sandbox execute' to retry.")
 	}
+
+	return nil
 }
