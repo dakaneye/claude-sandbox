@@ -17,14 +17,15 @@ Log tail:
 
 // analyzeLog uses Claude haiku to analyze the log content.
 // Returns empty string if analysis fails (graceful degradation).
-func analyzeLog(logContent string) string {
+// Respects the provided context for cancellation with a 30s timeout.
+func analyzeLog(ctx context.Context, logContent string) string {
 	if logContent == "" {
 		return ""
 	}
 
 	prompt := analysisPrompt + logContent
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "claude", "-p", "--model", "haiku", prompt)

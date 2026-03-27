@@ -61,8 +61,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	// Show spinner while analyzing
 	spinChars := []string{"|", "/", "-", "\\"}
 	done := make(chan string, 1)
+	ctx := cmd.Context()
 	go func() {
-		done <- analyzeLog(logContent)
+		done <- analyzeLog(ctx, logContent)
 	}()
 
 	i := 0
@@ -71,6 +72,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	for {
 		select {
+		case <-ctx.Done():
+			fmt.Print("\r\033[K") // Clear spinner
+			return ctx.Err()
 		case analysis := <-done:
 			fmt.Print("\r\033[K") // Clear spinner
 			if analysis == "" {

@@ -30,7 +30,8 @@ func readLogTail(path string, lines int) string {
 		count++
 	}
 
-	if count == 0 {
+	// Check for scanner errors (I/O issues, line too long)
+	if scanner.Err() != nil || count == 0 {
 		return ""
 	}
 
