@@ -58,7 +58,7 @@ func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bo
 
 	completionPath := filepath.Join(sess.WorktreePath, "COMPLETION.md")
 	if _, err := os.Stat(completionPath); os.IsNotExist(err) {
-		return fmt.Errorf("COMPLETION.md not found. Run 'claude-sandbox run' first")
+		return fmt.Errorf("COMPLETION.md not found. Run 'claude-sandbox execute' first")
 	}
 
 	content, err := os.ReadFile(completionPath)
