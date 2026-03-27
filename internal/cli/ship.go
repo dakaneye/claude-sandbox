@@ -9,10 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dakaneye/claude-sandbox/internal/state"
 	"github.com/dakaneye/claude-sandbox/internal/worktree"
 )
 
 func newShipCommand() *cobra.Command {
+	var sessionFlag string
 	var skipReview bool
 	var keepWorktree bool
 
@@ -32,23 +34,29 @@ The command:
   4. Invokes Claude with /create-pr skill
   5. Optionally cleans up the worktree`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runShip(cmd, skipReview, keepWorktree)
+			return runShip(cmd, sessionFlag, skipReview, keepWorktree)
 		},
 	}
 
+	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID or name")
 	cmd.Flags().BoolVar(&skipReview, "skip-review", false, "Skip COMPLETION.md review prompt")
 	cmd.Flags().BoolVar(&keepWorktree, "keep-worktree", false, "Don't clean up worktree after shipping")
 
 	return cmd
 }
 
-func runShip(cmd *cobra.Command, skipReview, keepWorktree bool) error {
-	wt, err := requireWorktree()
+func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bool) error {
+	repoPath, err := findRepoRoot()
 	if err != nil {
 		return err
 	}
 
-	completionPath := filepath.Join(wt.Path, "COMPLETION.md")
+	sess, err := state.ResolveSession(repoPath, sessionFlag)
+	if err != nil {
+		return err
+	}
+
+	completionPath := filepath.Join(sess.WorktreePath, "COMPLETION.md")
 	if _, err := os.Stat(completionPath); os.IsNotExist(err) {
 		return fmt.Errorf("COMPLETION.md not found. Run 'claude-sandbox run' first")
 	}
@@ -85,7 +93,7 @@ func runShip(cmd *cobra.Command, skipReview, keepWorktree bool) error {
 	cmd.Println("Launching Claude to create PR via /create-pr...")
 
 	claudeCmd := exec.Command("claude", "--dangerously-skip-permissions", "/create-pr")
-	claudeCmd.Dir = wt.Path
+	claudeCmd.Dir = sess.WorktreePath
 	claudeCmd.Stdin = os.Stdin
 	claudeCmd.Stdout = os.Stdout
 	claudeCmd.Stderr = os.Stderr
@@ -95,11 +103,14 @@ func runShip(cmd *cobra.Command, skipReview, keepWorktree bool) error {
 	}
 
 	if !keepWorktree {
-		if promptYesNo(cmd, "Clean up worktree?", true) {
-			if err := worktree.Remove(wt.Path); err != nil {
+		if promptYesNo(cmd, "Clean up worktree and session?", true) {
+			if err := worktree.Remove(sess.WorktreePath); err != nil {
 				cmd.PrintErrf("Warning: failed to remove worktree: %v\n", err)
+			}
+			if err := state.Remove(repoPath, sess.ID); err != nil {
+				cmd.PrintErrf("Warning: failed to remove session: %v\n", err)
 			} else {
-				cmd.Println("Worktree removed.")
+				cmd.Println("Session cleaned up.")
 			}
 		}
 	}
