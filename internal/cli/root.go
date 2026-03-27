@@ -12,8 +12,8 @@ func NewRootCommand(version string) *cobra.Command {
 		Version: version,
 	}
 
-	cmd.AddCommand(newInitCommand())
-	cmd.AddCommand(newRunCommand())
+	cmd.AddCommand(newSpecCommand())
+	// cmd.AddCommand(newExecuteCommand())  // TODO: Create execute command to replace run
 	cmd.AddCommand(newShipCommand())
 	cmd.AddCommand(newStatusCommand())
 	cmd.AddCommand(newLogsCommand())
