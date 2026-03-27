@@ -91,7 +91,8 @@ func runSpec(cmd *cobra.Command, sessionName string) error {
 	}
 
 	// Run Claude interactively in the worktree
-	claudeCmd := exec.CommandContext(context.Background(), "claude", "-cd", wt.Path)
+	claudeCmd := exec.CommandContext(context.Background(), "claude")
+	claudeCmd.Dir = wt.Path
 	claudeCmd.Stdin = os.Stdin
 	claudeCmd.Stdout = os.Stdout
 	claudeCmd.Stderr = os.Stderr

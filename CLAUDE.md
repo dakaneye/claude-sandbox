@@ -41,6 +41,17 @@ container/                    Container image build (apko + hooks)
 - Active session tracked in `.claude-sandbox/active`
 - Logs stored at `~/.claude/sandbox-sessions/<session-id>.log`
 
+### Superpowers Integration
+When using superpowers skills (`/brainstorming`, `/writing-plans`), tell Claude to put
+the plan in the **worktree root** as `PLAN.md`:
+
+```
+Put the plan in PLAN.md in the repository root.
+```
+
+By default, superpowers puts plans in `docs/specs/<date>-<name>.md`, but claude-sandbox
+expects `PLAN.md` in the worktree root for the `execute` command.
+
 ## Commands
 
 ```bash
