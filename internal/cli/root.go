@@ -16,7 +16,6 @@ func NewRootCommand(version string) *cobra.Command {
 	cmd.AddCommand(newExecuteCommand())
 	cmd.AddCommand(newShipCommand())
 	cmd.AddCommand(newStatusCommand())
-	cmd.AddCommand(newLogsCommand())
 	cmd.AddCommand(newStopCommand())
 	cmd.AddCommand(newCleanCommand())
 

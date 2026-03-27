@@ -1,20 +1,21 @@
 package cli
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dakaneye/claude-sandbox/internal/state"
 )
 
-func TestShipCommand_NotInWorktree(t *testing.T) {
+func TestShipCommand_NotGitRepo(t *testing.T) {
 	dir := t.TempDir()
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("failed to chdir: %v", err)
+		t.Fatalf("chdir: %v", err)
 	}
 
 	cmd := NewRootCommand("test")
@@ -22,46 +23,57 @@ func TestShipCommand_NotInWorktree(t *testing.T) {
 
 	err := cmd.Execute()
 	if err == nil {
-		t.Error("expected error when not in git worktree")
+		t.Error("expected error when not a git repository")
 	}
-	if !strings.Contains(err.Error(), "worktree") {
-		t.Errorf("error should mention worktree, got: %v", err)
+	if !strings.Contains(err.Error(), "git repository") {
+		t.Errorf("error should mention git repository, got: %v", err)
+	}
+}
+
+func TestShipCommand_NoSessions(t *testing.T) {
+	repo := setupTestRepoForCLI(t)
+	oldWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	if err := os.Chdir(repo); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	cmd := NewRootCommand("test")
+	cmd.SetArgs([]string{"ship"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Error("expected error when no sessions")
+	}
+	if !strings.Contains(err.Error(), "no sessions") {
+		t.Errorf("error should mention no sessions, got: %v", err)
 	}
 }
 
 func TestShipCommand_NoCompletionFile(t *testing.T) {
 	repo := setupTestRepoForCLI(t)
+	oldWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	if err := os.Chdir(repo); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	// Create a session (worktree path doesn't need to exist for this test)
+	wtPath := repo + "-test-sandbox"
+	sess, err := state.Create(repo, state.CreateOptions{
+		WorktreePath: wtPath,
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
 
 	cmd := NewRootCommand("test")
-	buf := new(bytes.Buffer)
-	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"init", repo})
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("init failed: %v", err)
-	}
+	cmd.SetArgs([]string{"ship", "--session", sess.ID})
 
-	var wtPath string
-	for _, line := range strings.Split(buf.String(), "\n") {
-		if strings.Contains(line, "Path:") {
-			wtPath = strings.TrimSpace(strings.TrimPrefix(line, "  Path:"))
-			break
-		}
-	}
-	if wtPath == "" {
-		t.Fatal("could not extract worktree path")
-	}
-	t.Cleanup(func() { os.RemoveAll(wtPath) })
-
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	if err := os.Chdir(wtPath); err != nil {
-		t.Fatalf("failed to chdir: %v", err)
-	}
-
-	cmd = NewRootCommand("test")
-	cmd.SetArgs([]string{"ship"})
-
-	err := cmd.Execute()
+	err = cmd.Execute()
 	if err == nil {
 		t.Error("expected error when COMPLETION.md not found")
 	}
@@ -72,26 +84,28 @@ func TestShipCommand_NoCompletionFile(t *testing.T) {
 
 func TestShipCommand_NotSuccessStatus(t *testing.T) {
 	repo := setupTestRepoForCLI(t)
+	oldWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWd) }()
 
-	cmd := NewRootCommand("test")
-	buf := new(bytes.Buffer)
-	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"init", repo})
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("init failed: %v", err)
+	if err := os.Chdir(repo); err != nil {
+		t.Fatalf("chdir: %v", err)
 	}
 
-	var wtPath string
-	for _, line := range strings.Split(buf.String(), "\n") {
-		if strings.Contains(line, "Path:") {
-			wtPath = strings.TrimSpace(strings.TrimPrefix(line, "  Path:"))
-			break
-		}
-	}
-	if wtPath == "" {
-		t.Fatal("could not extract worktree path")
+	// Create a worktree directory for COMPLETION.md
+	wtPath := repo + "-test-sandbox"
+	if err := os.MkdirAll(wtPath, 0755); err != nil {
+		t.Fatalf("mkdir worktree: %v", err)
 	}
 	t.Cleanup(func() { os.RemoveAll(wtPath) })
+
+	// Create a session
+	sess, err := state.Create(repo, state.CreateOptions{
+		WorktreePath: wtPath,
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
 
 	// Create COMPLETION.md with BLOCKED status
 	completionContent := `# Completion Report
@@ -99,19 +113,13 @@ Status: BLOCKED
 Reason: External action attempted
 `
 	if err := os.WriteFile(filepath.Join(wtPath, "COMPLETION.md"), []byte(completionContent), 0644); err != nil {
-		t.Fatalf("failed to write COMPLETION.md: %v", err)
+		t.Fatalf("write COMPLETION.md: %v", err)
 	}
 
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	if err := os.Chdir(wtPath); err != nil {
-		t.Fatalf("failed to chdir: %v", err)
-	}
+	cmd := NewRootCommand("test")
+	cmd.SetArgs([]string{"ship", "--session", sess.ID})
 
-	cmd = NewRootCommand("test")
-	cmd.SetArgs([]string{"ship"})
-
-	err := cmd.Execute()
+	err = cmd.Execute()
 	if err == nil {
 		t.Error("expected error when status is not SUCCESS")
 	}

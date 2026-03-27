@@ -6,16 +6,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dakaneye/claude-sandbox/internal/session"
+	"github.com/dakaneye/claude-sandbox/internal/state"
 )
 
-func TestStopCommand_NotInWorktree(t *testing.T) {
+func TestStopCommand_NotGitRepo(t *testing.T) {
 	dir := t.TempDir()
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("failed to chdir: %v", err)
+		t.Fatalf("chdir: %v", err)
 	}
 
 	cmd := NewRootCommand("test")
@@ -25,152 +25,95 @@ func TestStopCommand_NotInWorktree(t *testing.T) {
 
 	err := cmd.Execute()
 	if err == nil {
-		t.Error("expected error when not in git worktree")
+		t.Error("expected error when not a git repository")
 	}
-	if !strings.Contains(err.Error(), "worktree") {
-		t.Errorf("error should mention worktree, got: %v", err)
+	if !strings.Contains(err.Error(), "git repository") {
+		t.Errorf("error should mention git repository, got: %v", err)
 	}
 }
 
-func TestStopCommand_NoActiveSession(t *testing.T) {
+func TestStopCommand_NoSessions(t *testing.T) {
 	repo := setupTestRepoForCLI(t)
-
-	// Create a worktree
-	cmd := NewRootCommand("test")
-	buf := new(bytes.Buffer)
-	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"init", repo})
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("init failed: %v", err)
-	}
-
-	var wtPath string
-	for _, line := range strings.Split(buf.String(), "\n") {
-		if strings.Contains(line, "Path:") {
-			wtPath = strings.TrimSpace(strings.TrimPrefix(line, "  Path:"))
-			break
-		}
-	}
-	if wtPath == "" {
-		t.Fatal("could not extract worktree path")
-	}
-	t.Cleanup(func() { os.RemoveAll(wtPath) })
-
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	if err := os.Chdir(wtPath); err != nil {
-		t.Fatalf("failed to chdir: %v", err)
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	if err := os.Chdir(repo); err != nil {
+		t.Fatalf("chdir: %v", err)
 	}
 
-	cmd = NewRootCommand("test")
+	cmd := NewRootCommand("test")
 	cmd.SetArgs([]string{"stop"})
 
 	err := cmd.Execute()
 	if err == nil {
-		t.Error("expected error when no active session")
+		t.Error("expected error when no sessions")
 	}
-	if !strings.Contains(err.Error(), "no active session") {
-		t.Errorf("error should mention no active session, got: %v", err)
+	if !strings.Contains(err.Error(), "no sessions") {
+		t.Errorf("error should mention no sessions, got: %v", err)
 	}
 }
 
-func TestStopCommand_CompletedSession(t *testing.T) {
+func TestStopCommand_SessionNotRunning(t *testing.T) {
 	repo := setupTestRepoForCLI(t)
+	oldWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	if err := os.Chdir(repo); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	// Create a session in speccing status (not running)
+	sess, err := state.Create(repo, state.CreateOptions{
+		WorktreePath: repo + "-test-sandbox",
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
 
 	cmd := NewRootCommand("test")
-	buf := new(bytes.Buffer)
-	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"init", repo})
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("init failed: %v", err)
-	}
-
-	var wtPath string
-	for _, line := range strings.Split(buf.String(), "\n") {
-		if strings.Contains(line, "Path:") {
-			wtPath = strings.TrimSpace(strings.TrimPrefix(line, "  Path:"))
-			break
-		}
-	}
-	if wtPath == "" {
-		t.Fatal("could not extract worktree path")
-	}
-	t.Cleanup(func() { os.RemoveAll(wtPath) })
-
-	// Create a completed session
-	sess, err := session.New(wtPath, "/tmp/spec.md")
-	if err != nil {
-		t.Fatalf("failed to create session: %v", err)
-	}
-	sess.Complete(session.StatusSuccess)
-	if err := sess.Save(); err != nil {
-		t.Fatalf("failed to save session: %v", err)
-	}
-
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	if err := os.Chdir(wtPath); err != nil {
-		t.Fatalf("failed to chdir: %v", err)
-	}
-
-	cmd = NewRootCommand("test")
-	cmd.SetArgs([]string{"stop"})
+	cmd.SetArgs([]string{"stop", "--session", sess.ID})
 
 	err = cmd.Execute()
 	if err == nil {
-		t.Error("expected error when session already completed")
+		t.Error("expected error when session not running")
 	}
-	if !strings.Contains(err.Error(), "no active session") {
-		t.Errorf("error should mention no active session, got: %v", err)
+	if !strings.Contains(err.Error(), "not running") {
+		t.Errorf("error should mention not running, got: %v", err)
 	}
 }
 
-func TestStopCommand_ActiveSession(t *testing.T) {
+func TestStopCommand_RunningSession(t *testing.T) {
 	repo := setupTestRepoForCLI(t)
+	oldWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	if err := os.Chdir(repo); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	// Create a running session
+	sess, err := state.Create(repo, state.CreateOptions{
+		WorktreePath: repo + "-test-sandbox",
+		Branch:       "sandbox/test",
+	})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	// Set to running status
+	sess.Status = state.StatusRunning
+	if err := state.Update(repo, sess); err != nil {
+		t.Fatalf("update session: %v", err)
+	}
 
 	cmd := NewRootCommand("test")
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"init", repo})
+	cmd.SetArgs([]string{"stop", "--session", sess.ID})
+
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("init failed: %v", err)
-	}
-
-	var wtPath string
-	for _, line := range strings.Split(buf.String(), "\n") {
-		if strings.Contains(line, "Path:") {
-			wtPath = strings.TrimSpace(strings.TrimPrefix(line, "  Path:"))
-			break
-		}
-	}
-	if wtPath == "" {
-		t.Fatal("could not extract worktree path")
-	}
-	t.Cleanup(func() { os.RemoveAll(wtPath) })
-
-	// Create an active session (no container ID, so docker stop won't be called)
-	sess, err := session.New(wtPath, "/tmp/spec.md")
-	if err != nil {
-		t.Fatalf("failed to create session: %v", err)
-	}
-	if err := sess.Save(); err != nil {
-		t.Fatalf("failed to save session: %v", err)
-	}
-
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	if err := os.Chdir(wtPath); err != nil {
-		t.Fatalf("failed to chdir: %v", err)
-	}
-
-	cmd = NewRootCommand("test")
-	buf = new(bytes.Buffer)
-	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"stop"})
-
-	err = cmd.Execute()
-	if err != nil {
-		t.Fatalf("stop should succeed for active session: %v", err)
+		t.Fatalf("stop should succeed: %v", err)
 	}
 
 	if !strings.Contains(buf.String(), "Session stopped") {
@@ -178,14 +121,14 @@ func TestStopCommand_ActiveSession(t *testing.T) {
 	}
 
 	// Verify session status changed
-	loadedSess, err := session.Load(wtPath)
+	updated, err := state.Get(repo, sess.ID)
 	if err != nil {
-		t.Fatalf("failed to load session: %v", err)
+		t.Fatalf("get session: %v", err)
 	}
-	if loadedSess.Status != session.StatusFailed {
-		t.Errorf("expected session status to be failed, got: %s", loadedSess.Status)
+	if updated.Status != state.StatusFailed {
+		t.Errorf("expected status failed, got: %s", updated.Status)
 	}
-	if loadedSess.Error != "stopped by user" {
-		t.Errorf("expected error 'stopped by user', got: %s", loadedSess.Error)
+	if updated.Error != "stopped by user" {
+		t.Errorf("expected error 'stopped by user', got: %s", updated.Error)
 	}
 }
