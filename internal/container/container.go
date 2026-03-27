@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -28,6 +29,7 @@ type RunOptions struct {
 	HomeDir      string
 	SpecPath     string
 	Interactive  bool
+	LogWriter    io.Writer // If set, container output is written here
 }
 
 // BuildRunArgs generates docker run arguments.
@@ -102,8 +104,13 @@ func Run(ctx context.Context, opts RunOptions) error {
 
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if opts.LogWriter != nil {
+		cmd.Stdout = opts.LogWriter
+		cmd.Stderr = opts.LogWriter
+	} else {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 
 	return cmd.Run()
 }
