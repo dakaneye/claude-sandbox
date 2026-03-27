@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-//nolint:unused // Will be used by status command
 const analysisPrompt = `Analyze this Claude Code session log. Respond in 2-3 lines:
 - Current phase (implementing, testing, reviewing, fixing, etc.)
 - What it's currently doing
@@ -18,8 +17,6 @@ Log tail:
 
 // analyzeLog uses Claude haiku to analyze the log content.
 // Returns empty string if analysis fails (graceful degradation).
-//
-//nolint:unused // Will be used by status command
 func analyzeLog(logContent string) string {
 	if logContent == "" {
 		return ""
@@ -40,8 +37,6 @@ func analyzeLog(logContent string) string {
 }
 
 // claudeAvailable checks if the claude CLI is available.
-//
-//nolint:unused // Will be used by status command
 func claudeAvailable() bool {
 	cmd := exec.Command("claude", "--version")
 	return cmd.Run() == nil

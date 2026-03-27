@@ -8,8 +8,6 @@ import (
 
 // readLogTail reads the last n lines from a file.
 // Returns empty string if file doesn't exist or is empty.
-//
-//nolint:unused // Will be used by status command
 func readLogTail(path string, lines int) string {
 	file, err := os.Open(path)
 	if err != nil {
