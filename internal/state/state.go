@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/dakaneye/claude-sandbox/internal/id"
@@ -118,6 +120,102 @@ func Get(repoPath, idOrName string) (*Session, error) {
 	}
 
 	return parseSession(data)
+}
+
+// List returns all sessions, sorted by creation time (newest first).
+func List(repoPath string) ([]*Session, error) {
+	dir := sessionsPath(repoPath)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read sessions directory: %w", err)
+	}
+
+	sessions := make([]*Session, 0, len(entries))
+	seen := make(map[string]bool)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".json") {
+			continue
+		}
+
+		// Skip symlinks (names), we'll get the actual file
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
+
+		id := strings.TrimSuffix(name, ".json")
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+
+		sess, err := Get(repoPath, id)
+		if err != nil {
+			continue
+		}
+		sessions = append(sessions, sess)
+	}
+
+	// Sort by creation time, newest first
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i].CreatedAt.After(sessions[j].CreatedAt)
+	})
+
+	return sessions, nil
+}
+
+// Update saves changes to an existing session.
+func Update(repoPath string, sess *Session) error {
+	return saveSession(repoPath, sess)
+}
+
+// Remove deletes a session and its name symlink.
+func Remove(repoPath, id string) error {
+	// Load session to get name
+	sess, err := Get(repoPath, id)
+	if err != nil {
+		return err
+	}
+
+	// Remove session file
+	path := sessionPath(repoPath, sess.ID)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove session file: %w", err)
+	}
+
+	// Remove name symlink if exists
+	if sess.Name != "" {
+		linkPath := filepath.Join(sessionsPath(repoPath), sess.Name+".json")
+		os.Remove(linkPath) // Ignore errors
+	}
+
+	// Clear active if this was the active session
+	active, _ := GetActiveID(repoPath)
+	if active == sess.ID {
+		os.Remove(activePath(repoPath))
+	}
+
+	return nil
+}
+
+// GetActiveID returns the ID of the active session.
+func GetActiveID(repoPath string) (string, error) {
+	data, err := os.ReadFile(activePath(repoPath))
+	if err != nil {
+		return "", fmt.Errorf("read active file: %w", err)
+	}
+	return strings.TrimSpace(string(data)), nil
 }
 
 // SetActive updates the active session pointer.
