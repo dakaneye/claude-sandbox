@@ -104,9 +104,10 @@ func runSpec(cmd *cobra.Command, sessionName string) error {
 	defer signal.Stop(sigChan)
 
 	// Run Claude
-	// Claude may exit with non-zero on Ctrl+D, which is normal.
-	// Silently continue as the user may have just canceled.
-	_ = claudeCmd.Run()
+	if err := claudeCmd.Run(); err != nil {
+		// Claude may exit with non-zero on Ctrl+D, which is normal
+		cmd.PrintErrf("Note: Claude exited with: %v\n", err)
+	}
 
 	cmd.Println()
 	cmd.Println("Claude session ended.")
