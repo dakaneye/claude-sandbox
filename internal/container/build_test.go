@@ -52,3 +52,10 @@ func TestWriteConfigs(t *testing.T) {
 		t.Error("prebake.dockerfile is empty")
 	}
 }
+
+func TestCurrentArch(t *testing.T) {
+	arch := currentArch()
+	if arch != "amd64" && arch != "arm64" {
+		t.Errorf("unexpected arch: %s", arch)
+	}
+}
