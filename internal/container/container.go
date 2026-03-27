@@ -119,7 +119,8 @@ func buildClaudeCommand(specPath string) string {
 	// Shell-escape the spec path to prevent injection
 	escaped := shellEscape(specPath)
 	// Holistic prompt: assess current state, do only what's needed to reach grade A
-	return fmt.Sprintf(`claude --dangerously-skip-permissions "Your goal: get this project to pass all quality gates with /review-code grade A.
+	// --verbose enables detailed output logging
+	return fmt.Sprintf(`claude --dangerously-skip-permissions --verbose "Your goal: get this project to pass all quality gates with /review-code grade A.
 
 Spec: %s
 

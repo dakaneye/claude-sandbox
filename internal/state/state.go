@@ -40,6 +40,7 @@ type Session struct {
 	Status       Status    `json:"status"`
 	LogPath      string    `json:"log_path"`
 	CreatedAt    time.Time `json:"created_at"`
+	StartedAt    time.Time `json:"started_at,omitempty"`
 	CompletedAt  time.Time `json:"completed_at,omitempty"`
 	Error        string    `json:"error,omitempty"`
 }

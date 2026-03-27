@@ -99,8 +99,9 @@ func runExecute(cmd *cobra.Command, sessionFlag string) error {
 		return fmt.Errorf("create history volume: %w", err)
 	}
 
-	// Update session status to running
+	// Update session status to running and record start time
 	sess.Status = state.StatusRunning
+	sess.StartedAt = time.Now()
 	if err := state.Update(repoPath, sess); err != nil {
 		return fmt.Errorf("update session status: %w", err)
 	}
