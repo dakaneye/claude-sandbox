@@ -264,3 +264,28 @@ func activePath(repoPath string) string {
 func sessionPath(repoPath, id string) string {
 	return filepath.Join(sessionsPath(repoPath), id+".json")
 }
+
+// ResolveSession resolves a session from ID/name or interactively.
+// If idOrName is empty, uses the active session or picker if multiple.
+func ResolveSession(repoPath, idOrName string) (*Session, error) {
+	// Explicit ID/name provided
+	if idOrName != "" {
+		return Get(repoPath, idOrName)
+	}
+
+	sessions, err := List(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(sessions) == 0 {
+		return nil, fmt.Errorf("no sessions found. Run 'claude-sandbox spec' first")
+	}
+
+	if len(sessions) == 1 {
+		return sessions[0], nil
+	}
+
+	// Multiple sessions - use picker
+	return PickSession(sessions)
+}
