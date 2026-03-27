@@ -41,6 +41,9 @@ func BuildRunArgs(opts RunOptions) []string {
 
 	if opts.Interactive {
 		args = append(args, "-it")
+	} else {
+		// Allocate pseudo-TTY even for non-interactive mode so Claude outputs to stdout
+		args = append(args, "-t")
 	}
 
 	// Add mounts
