@@ -1,10 +1,13 @@
 package state
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/dakaneye/claude-sandbox/internal/id"
 )
 
 const (
@@ -46,4 +49,120 @@ func EnsureDir(repoPath string) error {
 		return fmt.Errorf("create sessions directory: %w", err)
 	}
 	return nil
+}
+
+// CreateOptions configures session creation.
+type CreateOptions struct {
+	WorktreePath string
+	Branch       string
+	Name         string
+}
+
+// Create creates a new session and sets it as active.
+func Create(repoPath string, opts CreateOptions) (*Session, error) {
+	if err := EnsureDir(repoPath); err != nil {
+		return nil, err
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("get home directory: %w", err)
+	}
+
+	sessionID := id.NewSessionID()
+	sess := &Session{
+		ID:           sessionID,
+		Name:         opts.Name,
+		WorktreePath: opts.WorktreePath,
+		Branch:       opts.Branch,
+		Status:       StatusSpeccing,
+		LogPath:      filepath.Join(home, logDirPath, sessionID+".log"),
+		CreatedAt:    time.Now(),
+	}
+
+	if err := saveSession(repoPath, sess); err != nil {
+		return nil, err
+	}
+
+	// Create name symlink if provided
+	if opts.Name != "" {
+		linkPath := filepath.Join(sessionsPath(repoPath), opts.Name+".json")
+		// Remove existing symlink if present
+		os.Remove(linkPath)
+		if err := os.Symlink(sessionID+".json", linkPath); err != nil {
+			return nil, fmt.Errorf("create name symlink: %w", err)
+		}
+	}
+
+	if err := SetActive(repoPath, sessionID); err != nil {
+		return nil, err
+	}
+
+	return sess, nil
+}
+
+// Get loads a session by ID or name.
+func Get(repoPath, idOrName string) (*Session, error) {
+	// Try direct ID first
+	path := sessionPath(repoPath, idOrName)
+	data, err := os.ReadFile(path)
+	if err == nil {
+		return parseSession(data)
+	}
+
+	// Try as name (symlink)
+	linkPath := filepath.Join(sessionsPath(repoPath), idOrName+".json")
+	data, err = os.ReadFile(linkPath)
+	if err != nil {
+		return nil, fmt.Errorf("session not found: %s", idOrName)
+	}
+
+	return parseSession(data)
+}
+
+// SetActive updates the active session pointer.
+func SetActive(repoPath, id string) error {
+	path := activePath(repoPath)
+	if err := os.WriteFile(path, []byte(id), 0644); err != nil {
+		return fmt.Errorf("write active file: %w", err)
+	}
+	return nil
+}
+
+// saveSession writes session to disk.
+func saveSession(repoPath string, sess *Session) error {
+	data, err := json.MarshalIndent(sess, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal session: %w", err)
+	}
+
+	path := sessionPath(repoPath, sess.ID)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write session file: %w", err)
+	}
+
+	return nil
+}
+
+func parseSession(data []byte) (*Session, error) {
+	var sess Session
+	if err := json.Unmarshal(data, &sess); err != nil {
+		return nil, fmt.Errorf("parse session: %w", err)
+	}
+	return &sess, nil
+}
+
+// sessionsPath returns the path to the sessions directory.
+func sessionsPath(repoPath string) string {
+	return filepath.Join(repoPath, stateDir, sessionsDir)
+}
+
+// activePath returns the path to the active file.
+func activePath(repoPath string) string {
+	return filepath.Join(repoPath, stateDir, activeFile)
+}
+
+// sessionPath returns the path to a session file.
+func sessionPath(repoPath, id string) string {
+	return filepath.Join(sessionsPath(repoPath), id+".json")
 }
