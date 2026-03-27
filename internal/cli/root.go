@@ -13,7 +13,7 @@ func NewRootCommand(version string) *cobra.Command {
 	}
 
 	cmd.AddCommand(newSpecCommand())
-	// cmd.AddCommand(newExecuteCommand())  // TODO: Create execute command to replace run
+	cmd.AddCommand(newExecuteCommand())
 	cmd.AddCommand(newShipCommand())
 	cmd.AddCommand(newStatusCommand())
 	cmd.AddCommand(newLogsCommand())
