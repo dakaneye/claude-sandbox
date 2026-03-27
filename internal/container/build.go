@@ -13,7 +13,7 @@ import (
 func CheckDocker() error {
 	cmd := exec.Command("docker", "info")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Docker is not running. Start Docker and try again.")
+		return fmt.Errorf("docker is not running; start Docker and try again")
 	}
 	return nil
 }
@@ -22,7 +22,7 @@ func CheckDocker() error {
 func CheckApko() error {
 	cmd := exec.Command("apko", "version")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("apko not found. Install with: brew install apko (macOS) or go install chainguard.dev/apko@latest")
+		return fmt.Errorf("apko not found; install with: brew install apko (macOS) or go install chainguard.dev/apko@latest")
 	}
 	return nil
 }
