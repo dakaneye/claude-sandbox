@@ -94,6 +94,13 @@ func runRun(cmd *cobra.Command, specPath string) error {
 	cmd.Printf("  Log:       %s\n", sess.LogPath)
 	cmd.Println()
 
+	// Create log file for capturing container output
+	logFile, err := os.Create(sess.LogPath)
+	if err != nil {
+		return fmt.Errorf("create log file: %w", err)
+	}
+	defer logFile.Close()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -121,6 +128,7 @@ func runRun(cmd *cobra.Command, specPath string) error {
 			HomeDir:      home,
 			SpecPath:     absSpec,
 			Interactive:  false,
+			LogWriter:    logFile,
 		})
 	}()
 
