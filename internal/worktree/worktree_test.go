@@ -87,40 +87,6 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestList(t *testing.T) {
-	repo := setupTestRepo(t)
-
-	// Create a worktree
-	wt, err := Create(repo)
-	if err != nil {
-		t.Fatalf("Create failed: %v", err)
-	}
-	defer func() { _ = Remove(wt.Path) }()
-
-	// List worktrees
-	worktrees, err := List(repo)
-	if err != nil {
-		t.Fatalf("List failed: %v", err)
-	}
-
-	// Should have at least 2 (main + sandbox)
-	if len(worktrees) < 2 {
-		t.Errorf("expected at least 2 worktrees, got %d", len(worktrees))
-	}
-
-	// Find our sandbox worktree
-	found := false
-	for _, w := range worktrees {
-		if strings.HasPrefix(w.Branch, "sandbox/") {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("sandbox worktree not found in list")
-	}
-}
-
 func TestRemove(t *testing.T) {
 	repo := setupTestRepo(t)
 
@@ -180,25 +146,4 @@ func TestDetect(t *testing.T) {
 			t.Errorf("expected path %s, got %s", expectedPath, gotPath)
 		}
 	})
-}
-
-func TestIsSandbox(t *testing.T) {
-	tests := []struct {
-		branch string
-		want   bool
-	}{
-		{"sandbox/2026-03-25-abc123", true},
-		{"sandbox/test", true},
-		{"main", false},
-		{"feature/something", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.branch, func(t *testing.T) {
-			wt := Worktree{Branch: tt.branch}
-			if got := wt.IsSandbox(); got != tt.want {
-				t.Errorf("IsSandbox() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }

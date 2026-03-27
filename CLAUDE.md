@@ -9,10 +9,10 @@ CLI tool for running Claude Code in sandboxed Docker containers with git worktre
 ```
 cmd/claude-sandbox/main.go    Entry point
 internal/
-  cli/                        Cobra commands (init, run, ship, status, logs, stop, clean)
-  cli/helpers.go              Shared CLI utilities (requireWorktree, promptYesNo)
+  cli/                        Cobra commands (spec, execute, status, stop, ship, clean)
+  cli/helpers.go              Shared CLI utilities (findRepoRoot, promptYesNo)
   container/                  Docker container management
-  session/                    Session state (JSON persisted to worktree)
+  state/                      Session state (JSON in .claude-sandbox/sessions/)
   worktree/                   Git worktree operations
   id/                         Shared ID generation utilities
 container/                    Container image build (apko + hooks)
@@ -22,7 +22,8 @@ container/                    Container image build (apko + hooks)
 
 ### CLI Commands
 - Use `newXxxCommand()` factory pattern returning `*cobra.Command`
-- Use `requireWorktree()` helper for commands that need worktree context
+- Use `findRepoRoot()` helper for commands that need repo context
+- Use `state.ResolveSession()` for session lookup (ID, name, or interactive picker)
 - Use `promptYesNo()` helper for confirmations
 - Output via `cmd.Println()` / `cmd.PrintErrf()`, not `fmt.Print`
 
@@ -35,7 +36,9 @@ container/                    Container image build (apko + hooks)
 - Enables stopping containers by worktree path
 
 ### Session State
-- Persisted to `session.json` in worktree root
+- Persisted to `.claude-sandbox/sessions/<id>.json` in main repo root
+- Named sessions use symlinks: `<name>.json` → `<id>.json`
+- Active session tracked in `.claude-sandbox/active`
 - Logs stored at `~/.claude/sandbox-sessions/<session-id>.log`
 
 ## Commands

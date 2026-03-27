@@ -58,46 +58,6 @@ func Create(repoPath string) (*Worktree, error) {
 	}, nil
 }
 
-// List returns all worktrees for a repository.
-func List(repoPath string) ([]Worktree, error) {
-	cmd := exec.Command("git", "worktree", "list", "--porcelain")
-	cmd.Dir = repoPath
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("list worktrees: %w", err)
-	}
-
-	var worktrees []Worktree
-	var current Worktree
-
-	for _, line := range strings.Split(string(output), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			if current.Path != "" {
-				worktrees = append(worktrees, current)
-				current = Worktree{}
-			}
-			continue
-		}
-
-		if strings.HasPrefix(line, "worktree ") {
-			current.Path = strings.TrimPrefix(line, "worktree ")
-			current.Repo = repoPath
-		} else if strings.HasPrefix(line, "branch ") {
-			branch := strings.TrimPrefix(line, "branch ")
-			// Convert refs/heads/branch to branch
-			current.Branch = strings.TrimPrefix(branch, "refs/heads/")
-		}
-	}
-
-	// Don't forget the last one
-	if current.Path != "" {
-		worktrees = append(worktrees, current)
-	}
-
-	return worktrees, nil
-}
-
 // Remove removes a worktree and its branch.
 func Remove(worktreePath string) error {
 	// Find the main repo to run git commands
@@ -181,9 +141,4 @@ func Detect(path string) (*Worktree, error) {
 		Branch: branch,
 		Repo:   repo,
 	}, nil
-}
-
-// IsSandbox returns true if the worktree is a sandbox worktree.
-func (w *Worktree) IsSandbox() bool {
-	return strings.HasPrefix(w.Branch, "sandbox/")
 }
