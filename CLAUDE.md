@@ -9,13 +9,12 @@ CLI tool for running Claude Code in sandboxed Docker containers with git worktre
 ```
 cmd/claude-sandbox/main.go    Entry point
 internal/
-  cli/                        Cobra commands (spec, execute, status, stop, ship, clean)
+  cli/                        Cobra commands (spec, execute, status, stop, ship, clean, build)
   cli/helpers.go              Shared CLI utilities (findRepoRoot, promptYesNo)
-  container/                  Docker container management
+  container/                  Docker container management + embedded build configs
   state/                      Session state (JSON in .claude-sandbox/sessions/)
   worktree/                   Git worktree operations
   id/                         Shared ID generation utilities
-container/                    Container image build (apko + hooks)
 ```
 
 ## Key Patterns
@@ -65,7 +64,7 @@ go test ./...
 make install
 
 # Build container image (requires apko)
-cd container && ./build.sh --load
+claude-sandbox build
 ```
 
 ## Testing Conventions
@@ -93,7 +92,7 @@ go test ./...
 go mod tidy && git diff --exit-code go.mod go.sum
 
 # 5. Container image build
-cd container && ./build.sh --load
+claude-sandbox build
 
 # 6. Code review (required - must be grade A)
 /review-code
@@ -124,4 +123,4 @@ See: https://prpm.dev/packages/@dakaneye/dakaneye-review-code
 
 - `github.com/spf13/cobra` - CLI framework
 - Docker - Container runtime
-- apko - Container image build (in `container/`)
+- apko - Container image build (embedded configs)

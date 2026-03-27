@@ -5,10 +5,6 @@ claude-sandbox
 *.exe
 coverage.out
 
-# Container build artifacts
-container/*.tar
-container/sbom-*.spdx.json
-
 # IDE
 .idea/
 .vscode/
