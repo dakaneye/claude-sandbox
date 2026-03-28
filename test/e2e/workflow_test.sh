@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# E2E workflow test: spec -> execute -> status -> clean
-# Requires: claude-sandbox binary in PATH, ANTHROPIC_API_KEY set, Docker running
+# E2E functional test: spec -> status (running) -> status (completed) -> clean
 #
-# This test costs API credits and takes 5-10 minutes. Run manually or in CI,
-# not on every commit.
+# Tests the full CLI workflow without execute (which takes 10+ minutes due to
+# hardcoded quality gates). The execute step is simulated by writing a log file
+# and updating session state, then status is verified against real parsing.
+#
+# For the full workflow including execute, run: test/e2e/full_workflow_test.sh
 #
 # ship is excluded -- creates real PRs, would pollute repos with test garbage
 
@@ -28,63 +30,116 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Ensure we're in a git repo
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
-echo "=== E2E Workflow Test ==="
+echo "=== E2E Functional Test ==="
 echo "Session: $SESSION_NAME"
 echo ""
 
-# Pre-flight checks
+# Pre-flight
 command -v claude-sandbox >/dev/null 2>&1 || { echo "Error: claude-sandbox not in PATH" >&2; exit 1; }
-command -v docker >/dev/null 2>&1 || { echo "Error: docker not found" >&2; exit 1; }
-[[ -n "${ANTHROPIC_API_KEY:-}" ]] || { echo "Error: ANTHROPIC_API_KEY not set" >&2; exit 1; }
-docker info >/dev/null 2>&1 || { echo "Error: docker daemon not running" >&2; exit 1; }
 
-# 1. Create a session with a simple PLAN.md
-echo "--- Step 1: Creating session with PLAN.md ---"
-# spec runs interactively, so we create the session and write PLAN.md directly
+# --- Step 1: Create session via spec ---
+echo "--- Step 1: Create session ---"
 claude-sandbox spec --name "$SESSION_NAME" </dev/null || true
 
 SESSION_DIR="$REPO_ROOT/.claude-sandbox/sessions"
-WORKTREE_PATH=$(jq -r .worktree_path "$SESSION_DIR/$SESSION_NAME.json" 2>/dev/null)
-if [[ -z "$WORKTREE_PATH" || "$WORKTREE_PATH" == "null" ]]; then
-    echo "Error: could not find session worktree path" >&2
+SESSION_FILE="$SESSION_DIR/$SESSION_NAME.json"
+if [[ ! -f "$SESSION_FILE" ]]; then
+    echo "Error: session file not created" >&2
     exit 1
 fi
+
+WORKTREE_PATH=$(jq -r .worktree_path "$SESSION_FILE")
+echo "Session created, worktree: $WORKTREE_PATH"
+
+# Write PLAN.md so session is in ready state
 cat > "$WORKTREE_PATH/PLAN.md" << 'PLAN'
 # Test Plan
-
-Create a file `hello.txt` containing "Hello World".
-Commit the file.
-Write COMPLETION.md with Status: SUCCESS.
+Create hello.txt containing "Hello World".
 PLAN
-echo "PLAN.md written to $WORKTREE_PATH"
 
-# 2. Execute
+# --- Step 2: Simulate a running session with a real log file ---
 echo ""
-echo "--- Step 2: Execute ---"
-timeout 600 claude-sandbox execute --session "$SESSION_NAME"
-EXECUTE_EXIT=$?
-if [[ $EXECUTE_EXIT -ne 0 ]]; then
-    echo "Warning: execute exited with code $EXECUTE_EXIT"
+echo "--- Step 2: Status during running session ---"
+
+# Write a realistic log file
+LOG_DIR="$HOME/.claude/sandbox-sessions"
+mkdir -p "$LOG_DIR"
+LOG_PATH="$LOG_DIR/$(jq -r .id "$SESSION_FILE").log"
+
+cat > "$LOG_PATH" << 'LOG'
+{"type":"system","subtype":"init","session_id":"test-session"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"cat /workspace/PLAN.md","description":"Read plan"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"# Test Plan\nCreate hello.txt"}]},"timestamp":"2026-03-28T03:31:38.037Z"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"make build 2>&1","description":"Run build"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"BUILD OK"}]},"timestamp":"2026-03-28T03:32:00.000Z"}
+{"type":"system","subtype":"task_progress","description":"Running build"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./...","description":"Run tests"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"ok"}]},"timestamp":"2026-03-28T03:33:00.000Z"}
+{"type":"system","subtype":"task_progress","description":"Running tests"}
+LOG
+
+# Update session to running state with log path
+STARTED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+jq --arg status "running" \
+   --arg started "$STARTED_AT" \
+   --arg log "$LOG_PATH" \
+   '.status = $status | .started_at = $started | .log_path = $log' \
+   "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
+
+# Run status -- THIS IS THE MAIN BUG FIX ASSERTION: must not crash
+STATUS_OUTPUT=$(claude-sandbox status --session "$SESSION_NAME" 2>&1)
+STATUS_EXIT=$?
+echo "$STATUS_OUTPUT"
+
+if [[ $STATUS_EXIT -ne 0 ]]; then
+    echo "✗ Status command crashed (exit $STATUS_EXIT)" >&2
+    exit 1
+fi
+echo "✓ Status did not crash for running session"
+
+# Verify it shows progress info (either haiku analysis or fallback)
+if echo "$STATUS_OUTPUT" | grep -qE "(tool calls|Analysis unavailable|Phase|Execution in progress|%)"; then
+    echo "✓ Status shows progress information"
+else
+    echo "✗ Status missing progress info" >&2
+    echo "  Output was: $STATUS_OUTPUT" >&2
+    exit 1
 fi
 
-# 3. Status (should show completed state, not crash)
+# --- Step 3: Simulate completed session ---
 echo ""
-echo "--- Step 3: Status ---"
+echo "--- Step 3: Status after completion ---"
+
+# Write COMPLETION.md
+cat > "$WORKTREE_PATH/COMPLETION.md" << 'COMPLETION'
+# Completion
+
+## Status: SUCCESS
+
+Created hello.txt as specified.
+COMPLETION
+
+# Update session to success state
+COMPLETED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+jq --arg status "success" \
+   --arg completed "$COMPLETED_AT" \
+   '.status = $status | .completed_at = $completed | .error = ""' \
+   "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
+
 STATUS_OUTPUT=$(claude-sandbox status --session "$SESSION_NAME" 2>&1)
 echo "$STATUS_OUTPUT"
 
-if echo "$STATUS_OUTPUT" | grep -qE "(completed successfully|Failed|Blocked)"; then
-    echo "✓ Status command works for completed session"
+if echo "$STATUS_OUTPUT" | grep -q "completed successfully"; then
+    echo "✓ Status shows completion"
 else
-    echo "✗ Status output unexpected" >&2
+    echo "✗ Status missing completion message" >&2
     exit 1
 fi
 
-# 4. Clean
+# --- Step 4: Clean ---
 echo ""
 echo "--- Step 4: Clean ---"
 claude-sandbox clean --session "$SESSION_NAME" --all
