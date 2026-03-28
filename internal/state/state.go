@@ -2,6 +2,7 @@ package state
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,10 +65,10 @@ type CreateOptions struct {
 // Create creates a new session and sets it as active.
 func Create(repoPath string, opts CreateOptions) (*Session, error) {
 	if opts.WorktreePath == "" {
-		return nil, fmt.Errorf("worktree path required")
+		return nil, errors.New("worktree path required")
 	}
 	if opts.Branch == "" {
-		return nil, fmt.Errorf("branch required")
+		return nil, errors.New("branch required")
 	}
 
 	if err := EnsureDir(repoPath); err != nil {

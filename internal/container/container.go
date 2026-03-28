@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -88,7 +89,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 
 	// Validate API key is set (will be passed via environment inheritance)
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
-		return fmt.Errorf("ANTHROPIC_API_KEY not set")
+		return errors.New("ANTHROPIC_API_KEY not set")
 	}
 
 	if opts.HomeDir == "" {
