@@ -60,6 +60,9 @@ jobs:
       - name: Install apko
         run: GOTOOLCHAIN=auto go install chainguard.dev/apko@latest
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@6da1ae018866400525525ce74ff892880c099987 # v0.5
+
       - name: Extract version from tag
         id: version
         run: |
@@ -68,21 +71,57 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
 
-      - name: Build base image (amd64)
+      - name: Check if base image needs rebuild
+        id: base-check
+        run: |
+          IMAGE=ghcr.io/dakaneye/claude-sandbox
+          # Hash the apko config to detect changes
+          APKO_HASH=$(sha256sum internal/container/configs/apko.yaml | cut -d' ' -f1)
+          echo "apko_hash=${APKO_HASH:0:12}" >> "$GITHUB_OUTPUT"
+
+          # Check if a base image with this config hash already exists
+          if crane manifest "${IMAGE}:base-${APKO_HASH:0:12}" >/dev/null 2>&1; then
+            echo "rebuild=false" >> "$GITHUB_OUTPUT"
+            echo "Base image cache hit (hash: ${APKO_HASH:0:12})"
+          else
+            echo "rebuild=true" >> "$GITHUB_OUTPUT"
+            echo "Base image needs rebuild (hash: ${APKO_HASH:0:12})"
+          fi
+
+      - name: Build base images
+        if: steps.base-check.outputs.rebuild == 'true'
         run: |
           mkdir -p /tmp/build
           cp internal/container/configs/apko.yaml /tmp/build/
           cp internal/container/configs/prebake.dockerfile /tmp/build/
-          apko build /tmp/build/apko.yaml claude-sandbox:base /tmp/build/base-amd64.tar --arch amd64
+          for ARCH in amd64 arm64; do
+            apko build /tmp/build/apko.yaml claude-sandbox:base /tmp/build/base-${ARCH}.tar --arch ${ARCH}
+          done
 
-      - name: Build base image (arm64)
+      - name: Load and push base images
+        if: steps.base-check.outputs.rebuild == 'true'
         run: |
-          apko build /tmp/build/apko.yaml claude-sandbox:base /tmp/build/base-arm64.tar --arch arm64
+          IMAGE=ghcr.io/dakaneye/claude-sandbox
+          HASH=${{ steps.base-check.outputs.apko_hash }}
+          for ARCH in amd64 arm64; do
+            docker load -i /tmp/build/base-${ARCH}.tar
+            docker tag "claude-sandbox:base-${ARCH}" "${IMAGE}:base-${ARCH}"
+            docker push "${IMAGE}:base-${ARCH}"
+          done
+          # Tag with config hash for future cache hits
+          docker manifest create "${IMAGE}:base-${HASH}" \
+            "${IMAGE}:base-amd64" "${IMAGE}:base-arm64"
+          docker manifest push "${IMAGE}:base-${HASH}"
+          # Update :base tag
+          docker manifest create "${IMAGE}:base" \
+            "${IMAGE}:base-amd64" "${IMAGE}:base-arm64"
+          docker manifest push "${IMAGE}:base"
 
-      - name: Load base images
+      - name: Copy prebake dockerfile
+        if: steps.base-check.outputs.rebuild != 'true'
         run: |
-          docker load -i /tmp/build/base-amd64.tar
-          docker load -i /tmp/build/base-arm64.tar
+          mkdir -p /tmp/build
+          cp internal/container/configs/prebake.dockerfile /tmp/build/
 
       - name: Build and push multi-arch image
         run: |
@@ -90,18 +129,6 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           MAJOR=${{ steps.version.outputs.major }}
 
-          # Push per-arch base images to GHCR and create a multi-arch manifest
-          # so buildx can resolve the correct base per platform via a single tag
-          for ARCH in amd64 arm64; do
-            docker tag "claude-sandbox:base-${ARCH}" "${IMAGE}:base-${ARCH}"
-            docker push "${IMAGE}:base-${ARCH}"
-          done
-          docker manifest create "${IMAGE}:base" \
-            "${IMAGE}:base-amd64" \
-            "${IMAGE}:base-arm64"
-          docker manifest push "${IMAGE}:base"
-
-          # Build and push multi-arch final image
           TAGS=""
           for TAG in "${VERSION}" "${MAJOR}" "latest"; do
             TAGS="${TAGS} -t ${IMAGE}:${TAG}"
@@ -119,9 +146,6 @@ jobs:
 
       - name: Install cosign
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4
-
-      - name: Install crane
-        uses: imjasonh/setup-crane@6da1ae018866400525525ce74ff892880c099987 # v0.5
 
       - name: Install syft
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
