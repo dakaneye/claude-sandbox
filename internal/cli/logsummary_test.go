@@ -149,3 +149,76 @@ func TestParseLogEvents_TaskProgress(t *testing.T) {
 		t.Errorf("TaskProgress[2] = %q, want %q", summary.TaskProgress[2], "Fixing lint errors")
 	}
 }
+
+func TestFormatSummary(t *testing.T) {
+	summary := &LogSummary{
+		ElapsedTime: 12 * time.Minute,
+		TotalTools:  47,
+		ToolCounts: map[string]int{
+			"Bash": 15,
+			"Read": 20,
+			"Edit": 8,
+			"Task": 4,
+		},
+		LastTool:     "Bash",
+		LastToolDesc: "go test ./...",
+		LastToolTime: time.Now().Add(-15 * time.Second),
+		TaskProgress: []string{
+			"Running tests in internal/cli",
+			"Fixing lint errors",
+		},
+		GateMentions: map[string]bool{
+			"build": true,
+			"lint":  true,
+			"test":  true,
+		},
+	}
+
+	result := formatSummary(summary)
+
+	checks := []string{
+		"12m0s elapsed",
+		"47 tool calls",
+		"Bash(15)",
+		"Read(20)",
+		"Edit(8)",
+		"Last: Bash",
+		"go test ./...",
+		"Running tests in internal/cli",
+		"Fixing lint errors",
+		"build",
+		"lint",
+		"test",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(result, check) {
+			t.Errorf("formatSummary missing %q in:\n%s", check, result)
+		}
+	}
+}
+
+func TestFormatFallback(t *testing.T) {
+	summary := &LogSummary{
+		ElapsedTime: 5 * time.Minute,
+		TotalTools:  10,
+		ToolCounts: map[string]int{
+			"Bash": 5,
+			"Read": 5,
+		},
+		LastTool:     "Bash",
+		LastToolDesc: "make build",
+		GateMentions: map[string]bool{
+			"build": true,
+		},
+	}
+
+	result := formatFallback(summary, "claude CLI timeout")
+
+	if !strings.Contains(result, "Analysis unavailable: claude CLI timeout") {
+		t.Errorf("missing warning in:\n%s", result)
+	}
+	if !strings.Contains(result, "10 tool calls") {
+		t.Errorf("missing tool count in:\n%s", result)
+	}
+}

@@ -82,11 +82,16 @@ func runStatus(cmd *cobra.Command, sessionFlag string) error {
 		}
 
 		// Show spinner while analyzing
+		type analyzeResult struct {
+			analysis string
+			fallback string
+		}
 		spinChars := []string{"|", "/", "-", "\\"}
-		done := make(chan string, 1)
+		done := make(chan analyzeResult, 1)
 		ctx := cmd.Context()
 		go func() {
-			done <- analyzeLog(ctx, logContent)
+			analysis, reason := analyzeLog(ctx, logContent)
+			done <- analyzeResult{analysis, reason}
 		}()
 
 		i := 0
@@ -98,12 +103,12 @@ func runStatus(cmd *cobra.Command, sessionFlag string) error {
 			case <-ctx.Done():
 				fmt.Print("\r\033[K") // Clear spinner
 				return ctx.Err()
-			case analysis := <-done:
+			case result := <-done:
 				fmt.Print("\r\033[K") // Clear spinner
-				if analysis == "" {
-					cmd.Println("Execution in progress.")
+				if result.analysis != "" {
+					cmd.Println(result.analysis)
 				} else {
-					cmd.Println(analysis)
+					cmd.Println("Execution in progress.")
 				}
 				return nil
 			case <-ticker.C:
