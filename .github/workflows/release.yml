@@ -87,28 +87,29 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           MAJOR=${{ steps.version.outputs.major }}
 
-          # Build amd64
-          docker build \
+          # Build and push amd64 (buildx for heredoc syntax support)
+          docker buildx build \
             -t "${IMAGE}:${VERSION}-amd64" \
             --build-arg BASE_IMAGE=claude-sandbox:base-amd64 \
             --label "org.opencontainers.image.source=https://github.com/dakaneye/claude-sandbox" \
             --label "org.opencontainers.image.version=${VERSION}" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --load \
             -f /tmp/build/prebake.dockerfile \
             /tmp/build
           docker push "${IMAGE}:${VERSION}-amd64"
 
-          # Build arm64
-          docker build \
+          # Build and push arm64
+          docker buildx build \
             -t "${IMAGE}:${VERSION}-arm64" \
             --build-arg BASE_IMAGE=claude-sandbox:base-arm64 \
             --platform linux/arm64 \
             --label "org.opencontainers.image.source=https://github.com/dakaneye/claude-sandbox" \
             --label "org.opencontainers.image.version=${VERSION}" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --push \
             -f /tmp/build/prebake.dockerfile \
             /tmp/build
-          docker push "${IMAGE}:${VERSION}-arm64"
 
           # Create and push multi-arch manifest
           for TAG in "${VERSION}" "${MAJOR}" "latest"; do
