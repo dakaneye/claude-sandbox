@@ -38,6 +38,12 @@ func BuildMounts(opts MountOptions) []Mount {
 			Target:   "/home/claude/.claude/commands",
 			ReadOnly: true,
 		},
+		// Plugins mounted from host (superpowers, etc.)
+		{
+			Source:   filepath.Join(home, ".claude", "plugins"),
+			Target:   "/home/claude/.claude/plugins",
+			ReadOnly: true,
+		},
 		{
 			Source:   filepath.Join(home, ".gitconfig"),
 			Target:   "/home/claude/.gitconfig",

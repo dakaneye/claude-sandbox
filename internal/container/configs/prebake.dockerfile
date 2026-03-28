@@ -20,30 +20,9 @@ WORKDIR /home/claude
 RUN prpm install @dakaneye/dakaneye-review-code --as claude && \
     test -d .claude/skills/dakaneye-review-code
 
-# Install superpowers plugin for brainstorming, writing-plans, TDD, etc.
-# Clone from public repo and write installed_plugins.json manually because
+# Note: Superpowers and other plugins are mounted from the host at runtime
+# via ~/.claude/plugins (read-only). They cannot be pre-installed because
 # `claude plugin install` requires marketplace auth not available at build time.
-ARG SUPERPOWERS_VERSION=5.0.6
-RUN mkdir -p .claude/plugins/cache/claude-plugins-official/superpowers && \
-    git clone --depth 1 https://github.com/anthropics/claude-plugins-official.git /tmp/plugins && \
-    cp -r /tmp/plugins/superpowers .claude/plugins/cache/claude-plugins-official/superpowers/${SUPERPOWERS_VERSION} && \
-    rm -rf /tmp/plugins && \
-    cat > .claude/plugins/installed_plugins.json << PLUGEOF
-{
-  "version": 2,
-  "plugins": {
-    "superpowers@claude-plugins-official": [
-      {
-        "scope": "user",
-        "installPath": "/home/claude/.claude/plugins/cache/claude-plugins-official/superpowers/${SUPERPOWERS_VERSION}",
-        "version": "${SUPERPOWERS_VERSION}",
-        "installedAt": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
-        "lastUpdated": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
-      }
-    ]
-  }
-}
-PLUGEOF
 
 # Pre-configure Claude Code to skip onboarding and trust prompts
 # Claude reads these from ~/.claude.json (not ~/.claude/settings.json)
