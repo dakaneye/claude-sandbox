@@ -30,9 +30,6 @@ Claude is prompted to follow these advisory quality gates:
   - Build must succeed
   - Lint must pass
   - Tests must pass
-  - Security scan must pass
-  - Spec coverage verified
-  - Commit hygiene checked
   - /review-code must return grade A
 
 Note: Quality gates are advisory prompts to Claude, not enforced checks.
