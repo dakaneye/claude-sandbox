@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -57,7 +58,7 @@ func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bo
 
 	completionPath := filepath.Join(sess.WorktreePath, "COMPLETION.md")
 	if _, err := os.Stat(completionPath); os.IsNotExist(err) {
-		return fmt.Errorf("COMPLETION.md not found. Run 'claude-sandbox execute' first")
+		return errors.New("COMPLETION.md not found. Run 'claude-sandbox execute' first")
 	}
 
 	content, err := os.ReadFile(completionPath)
@@ -66,12 +67,12 @@ func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bo
 	}
 
 	if parseCompletionStatus(string(content)) != state.StatusSuccess {
-		return fmt.Errorf("COMPLETION.md does not show SUCCESS status. Cannot ship blocked or failed work")
+		return errors.New("COMPLETION.md does not show SUCCESS status. Cannot ship blocked or failed work")
 	}
 
 	if !skipReview {
 		if !promptYesNo(cmd, "Review COMPLETION.md before shipping?", true) {
-			return fmt.Errorf("shipping cancelled")
+			return errors.New("shipping canceled")
 		}
 
 		editor := os.Getenv("EDITOR")
@@ -86,7 +87,7 @@ func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bo
 	}
 
 	if !promptYesNo(cmd, "Ship this work?", false) {
-		return fmt.Errorf("shipping cancelled")
+		return errors.New("shipping canceled")
 	}
 
 	cmd.Println("Launching Claude to create PR via /create-pr...")

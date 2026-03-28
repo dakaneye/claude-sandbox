@@ -102,6 +102,8 @@ func runSpec(cmd *cobra.Command, sessionName, branch string) error {
 
 	// Suppress Go's default SIGINT/SIGTERM handler so the child Claude
 	// process receives and handles Ctrl+C itself via process group.
+	// The channel is intentionally unread — we only need to prevent Go
+	// from exiting, not act on the signal ourselves.
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigChan)
