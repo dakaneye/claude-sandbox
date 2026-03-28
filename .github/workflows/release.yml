@@ -55,7 +55,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Install apko
-        run: go install chainguard.dev/apko@latest
+        run: GOTOOLCHAIN=auto go install chainguard.dev/apko@latest
 
       - name: Extract version from tag
         id: version
