@@ -12,6 +12,9 @@ coverage.out
 *.swo
 *~
 
+# Session state (local runtime data)
+.claude-sandbox/
+
 # OS
 .DS_Store
 Thumbs.db
