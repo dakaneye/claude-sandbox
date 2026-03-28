@@ -4,6 +4,9 @@ set -Eeuo pipefail
 # E2E workflow test: spec -> execute -> status -> clean
 # Requires: claude-sandbox binary in PATH, ANTHROPIC_API_KEY set, Docker running
 #
+# This test costs API credits and takes 5-10 minutes. Run manually or in CI,
+# not on every commit.
+#
 # ship is excluded -- creates real PRs, would pollute repos with test garbage
 
 SESSION_NAME="e2e-test-$$"
@@ -62,7 +65,7 @@ echo "PLAN.md written to $WORKTREE_PATH"
 # 2. Execute
 echo ""
 echo "--- Step 2: Execute ---"
-timeout 180 claude-sandbox execute --session "$SESSION_NAME"
+timeout 600 claude-sandbox execute --session "$SESSION_NAME"
 EXECUTE_EXIT=$?
 if [[ $EXECUTE_EXIT -ne 0 ]]; then
     echo "Warning: execute exited with code $EXECUTE_EXIT"
