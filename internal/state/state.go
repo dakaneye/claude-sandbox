@@ -153,12 +153,10 @@ func List(repoPath string) ([]*Session, error) {
 			continue
 		}
 
-		// Skip symlinks (names), we'll get the actual file
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
+		// Skip symlinks (names), we'll get the actual file.
+		// entry.Type() uses lstat data from ReadDir; entry.Info() follows
+		// symlinks and would never have ModeSymlink set.
+		if entry.Type()&os.ModeSymlink != 0 {
 			continue
 		}
 
