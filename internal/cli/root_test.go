@@ -44,7 +44,7 @@ func TestNewRootCommand(t *testing.T) {
 	}
 
 	// Check subcommands exist
-	expectedCmds := []string{"spec", "execute", "status", "stop", "ship", "clean"}
+	expectedCmds := []string{"spec", "execute", "status", "stop", "ship", "clean", "list", "build"}
 	for _, name := range expectedCmds {
 		found := false
 		for _, sub := range cmd.Commands() {

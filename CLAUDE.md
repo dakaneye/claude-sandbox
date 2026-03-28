@@ -11,6 +11,7 @@ cmd/claude-sandbox/main.go    Entry point
 internal/
   cli/                        Cobra commands (spec, execute, status, stop, ship, clean, list, build)
   cli/helpers.go              Shared CLI utilities (findRepoRoot, promptYesNo)
+  cli/analyze.go              Claude haiku log analysis for status progress estimation
   cli/completion.go           COMPLETION.md status parsing (shared by execute + ship)
   cli/logsummary.go           Stream-json log parsing for status progress analysis
   container/                  Docker container management + embedded build configs
