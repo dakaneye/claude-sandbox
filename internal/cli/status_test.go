@@ -3,8 +3,10 @@ package cli
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dakaneye/claude-sandbox/internal/state"
 )
@@ -129,5 +131,67 @@ func TestStatusCommand_WithName(t *testing.T) {
 	}
 	if !strings.Contains(output, "my-feature") {
 		t.Errorf("expected 'my-feature' in output, got: %s", output)
+	}
+}
+
+func TestStatusCommand_RunningWithLog(t *testing.T) {
+	repo := setupTestRepoForCLI(t)
+	oldWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	if err := os.Chdir(repo); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	// Create log file with sample stream-json content
+	logDir := t.TempDir()
+	logPath := filepath.Join(logDir, "test.log")
+	logLines := []string{
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"make build","description":"Run build"}}]}}`,
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/workspace/main.go"}}]}}`,
+		`{"type":"system","subtype":"task_progress","description":"Building project"}`,
+	}
+	if err := os.WriteFile(logPath, []byte(strings.Join(logLines, "\n")), 0644); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+
+	// Create a running session
+	sess, err := state.Create(repo, state.CreateOptions{
+		WorktreePath: repo + "-test-sandbox",
+		Branch:       "sandbox/test",
+		Name:         "running-test",
+	})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	sess.Status = state.StatusRunning
+	sess.StartedAt = time.Now().Add(-5 * time.Minute)
+	sess.LogPath = logPath
+	if err := state.Update(repo, sess); err != nil {
+		t.Fatalf("update session: %v", err)
+	}
+
+	cmd := NewRootCommand("test")
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"status", "--session", "running-test"})
+
+	// Must not crash — that's the primary assertion
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("status should not crash for running session: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "running") {
+		t.Errorf("expected 'running' in output, got: %s", output)
+	}
+	// Should show progress info (haiku analysis, fallback metrics, or in-progress message)
+	hasProgress := strings.Contains(output, "tool calls") ||
+		strings.Contains(output, "Execution in progress") ||
+		strings.Contains(output, "Phase") ||
+		strings.Contains(output, "Analysis unavailable") ||
+		strings.Contains(output, "%")
+	if !hasProgress {
+		t.Errorf("expected progress info in output, got: %s", output)
 	}
 }

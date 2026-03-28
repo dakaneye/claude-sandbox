@@ -69,28 +69,28 @@ func runStatus(cmd *cobra.Command, sessionFlag string) error {
 	case state.StatusReady:
 		cmd.Println("Session ready. Run 'claude-sandbox execute' to start.")
 	case state.StatusRunning:
-		// Read log and analyze
-		logContent := readLogTail(sess.LogPath, 500)
-		if logContent == "" {
-			cmd.Println("Execution in progress. Log not available yet.")
+		summary, err := parseLogEvents(sess.LogPath, sess.StartedAt)
+		if err != nil || summary.TotalTools == 0 {
+			cmd.Println("Execution in progress. No log data yet.")
 			return nil
 		}
 
 		if !claudeAvailable() {
-			cmd.Println("Execution in progress. (Claude CLI not available for analysis)")
+			cmd.Println(formatFallback(summary, "claude CLI not found"))
 			return nil
 		}
 
 		// Show spinner while analyzing
 		type analyzeResult struct {
 			analysis string
-			fallback string
+			reason   string
 		}
 		spinChars := []string{"|", "/", "-", "\\"}
+		formattedSummary := formatSummary(summary)
 		done := make(chan analyzeResult, 1)
 		ctx := cmd.Context()
 		go func() {
-			analysis, reason := analyzeLog(ctx, logContent)
+			analysis, reason := analyzeLog(ctx, formattedSummary)
 			done <- analyzeResult{analysis, reason}
 		}()
 
@@ -101,14 +101,14 @@ func runStatus(cmd *cobra.Command, sessionFlag string) error {
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Print("\r\033[K") // Clear spinner
+				fmt.Print("\r\033[K")
 				return ctx.Err()
 			case result := <-done:
-				fmt.Print("\r\033[K") // Clear spinner
-				if result.analysis != "" {
-					cmd.Println(result.analysis)
+				fmt.Print("\r\033[K")
+				if result.reason != "" {
+					cmd.Println(formatFallback(summary, result.reason))
 				} else {
-					cmd.Println("Execution in progress.")
+					cmd.Println(result.analysis)
 				}
 				return nil
 			case <-ticker.C:
