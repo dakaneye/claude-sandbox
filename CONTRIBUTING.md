@@ -21,7 +21,7 @@ make clean      # Remove build artifacts
 ## Container Image
 
 ```bash
-cd container && ./build.sh --load
+claude-sandbox build
 ```
 
 Requires [apko](https://github.com/chainguard-dev/apko) for building the base image.
