@@ -27,8 +27,7 @@ contents:
 
     # Cloud/infra tools
     - kubectl
-    # terraform removed: bundles vulnerable go-getter (GHSA-wjrx-6529-hcj3)
-    # and is not needed for Go development quality gates
+    - terraform
     - gh
 
     # Dev utilities
