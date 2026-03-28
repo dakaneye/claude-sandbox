@@ -4,36 +4,12 @@ FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
 
-# Switch to root to patch system-level packages and install global npm packages
-USER root
-
-# Patch vulnerable npm bundled dependencies before any npm operations
-# picomatch 4.0.3 -> 4.0.4 (GHSA-c2c7-rcm5-vvqj, GHSA-3v7f-55p6-f55p)
-# brace-expansion 5.0.4 -> 5.0.5 (GHSA-f886-m6hf-6m8v)
-RUN cd /tmp && \
-    npm pack picomatch@4.0.4 2>/dev/null && \
-    tar xzf picomatch-4.0.4.tgz -C /usr/lib/node_modules/npm/node_modules/tinyglobby/node_modules/picomatch --strip-components=1 && \
-    npm pack brace-expansion@5.0.5 2>/dev/null && \
-    tar xzf brace-expansion-5.0.5.tgz -C /usr/lib/node_modules/npm/node_modules/brace-expansion --strip-components=1 && \
-    rm -f /tmp/*.tgz
-
-# Switch back to non-root user for all subsequent operations
-USER claude
-
 # Install Claude Code and prpm globally
 RUN npm install -g @anthropic-ai/claude-code prpm && \
     claude --version && \
     prpm --version
 
-# Patch prpm's bundled tar 6.2.1 (6 high CVEs: path traversal, symlink attacks)
-RUN cd /tmp && \
-    npm pack tar@latest 2>/dev/null && \
-    tar xzf tar-*.tgz -C /home/claude/.npm-global/lib/node_modules/prpm/node_modules/tar --strip-components=1 && \
-    rm -f /tmp/tar-*.tgz
-
 # Pre-install the review-code skill for code quality gates
-# prpm installs to flat directory structure: dakaneye-review-code (not @dakaneye/dakaneye-review-code)
-# Use /home/claude since the container runs as user 'claude' (not root)
 WORKDIR /home/claude
 RUN prpm install @dakaneye/dakaneye-review-code --as claude && \
     test -d .claude/skills/dakaneye-review-code
@@ -43,6 +19,19 @@ RUN prpm install @dakaneye/dakaneye-review-code --as claude && \
 RUN claude plugin marketplace add anthropics/claude-plugins-official && \
     claude plugin marketplace add anthropics/claude-code --sparse .claude-plugin plugins && \
     claude plugin install superpowers@claude-plugins-official
+
+# Patch all known vulnerable npm dependencies
+# Must run as root to write to /usr/lib/node_modules (system npm)
+USER root
+RUN cd /tmp && \
+    npm pack picomatch@4.0.4 2>/dev/null && \
+    tar xzf picomatch-4.0.4.tgz -C /usr/lib/node_modules/npm/node_modules/tinyglobby/node_modules/picomatch --strip-components=1 && \
+    npm pack brace-expansion@5.0.5 2>/dev/null && \
+    tar xzf brace-expansion-5.0.5.tgz -C /usr/lib/node_modules/npm/node_modules/brace-expansion --strip-components=1 && \
+    npm pack tar@latest 2>/dev/null && \
+    tar xzf tar-*.tgz -C /home/claude/.npm-global/lib/node_modules/prpm/node_modules/tar --strip-components=1 && \
+    rm -f /tmp/*.tgz
+USER claude
 
 # Pre-configure Claude Code to skip onboarding and trust prompts
 # Claude reads these from ~/.claude.json (not ~/.claude/settings.json)
