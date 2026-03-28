@@ -62,6 +62,7 @@ func BuildRunArgs(opts RunOptions) []string {
 	// Environment variables
 	// Pass API key via environment inheritance (not visible in ps aux)
 	args = append(args, "-e", "ANTHROPIC_API_KEY")
+	args = append(args, "-e", "GITHUB_TOKEN")
 	args = append(args, "-e", "HOME=/home/claude")
 
 	// Working directory
@@ -121,11 +122,22 @@ func Run(ctx context.Context, opts RunOptions) error {
 func buildClaudeCommand(specPath string) string {
 	// Shell-escape the spec path to prevent injection
 	escaped := shellEscape(specPath)
+
+	// GitHub credential setup (runs only if GITHUB_TOKEN is set).
+	// The credential.helper uses the !f() shell-function syntax required by git
+	// to execute a shell command instead of a binary. The function applies
+	// globally inside the container, which is intentional for this sandbox.
+	githubSetup := `if [ -n "$GITHUB_TOKEN" ]; then
+    echo "$GITHUB_TOKEN" | gh auth login --with-token
+    git config --global credential.helper '!f() { echo "username=x-access-token"; echo "password=$GITHUB_TOKEN"; }; f'
+fi
+`
+
 	// Holistic prompt: assess current state, do only what's needed to reach grade A
 	// -p (print mode) skips the workspace trust dialog for non-interactive execution
 	// --output-format stream-json enables real-time streaming to log files
 	// --verbose enables detailed output logging
-	return fmt.Sprintf(`claude --dangerously-skip-permissions --verbose -p --output-format stream-json "Your goal: get this project to pass all quality gates with /review-code grade A.
+	claudeCmd := fmt.Sprintf(`claude --dangerously-skip-permissions --verbose -p --output-format stream-json "Your goal: get this project to pass all quality gates with /review-code grade A.
 
 Spec: %s
 
@@ -142,6 +154,8 @@ Then do only what's needed:
 Quality gates: build, lint, test, /review-code grade A.
 Keep iterating on review feedback until grade A (do not stop at B or lower).
 Update COMPLETION.md with final status."`, escaped)
+
+	return githubSetup + claudeCmd
 }
 
 // shellEscape escapes a string for safe use in shell commands.

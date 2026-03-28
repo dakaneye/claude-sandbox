@@ -1,0 +1,24 @@
+# Octo STS trust policy for claude-sandbox GitHub access
+#
+# Location: .github/chainguard/{name}.sts.yaml in your repo
+# (The "chainguard" directory name is fixed, regardless of OIDC issuer)
+#
+# See: https://github.com/octo-sts/app
+#
+# Usage:
+# 1. Install Octo STS GitHub App on your org/repos
+# 2. Copy this to .github/chainguard/claude.sts.yaml in target repo
+# 3. Get token: octo-sts get --scope org/repo --identity claude
+# 4. Export: export GITHUB_TOKEN=$(octo-sts get ...)
+# 5. Run: claude-sandbox execute
+
+issuer: https://accounts.google.com
+# issuer: https://token.actions.githubusercontent.com
+subject: user@example.com
+
+permissions:
+  contents: read
+  metadata: read
+  pull_requests: read
+  issues: read
+  actions: read

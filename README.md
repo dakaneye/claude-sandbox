@@ -101,6 +101,20 @@ Read operations are allowed (gh pr view, curl GET, etc.).
 
 > **Important**: Hooks are advisory. Claude can choose to ignore them. Always review changes before running `ship`.
 
+## GitHub Integration
+
+To give Claude scoped, read-only GitHub access without passing your personal credentials:
+
+1. Set up [Octo STS](https://github.com/octo-sts/app) for your repositories
+2. See `examples/octo-sts-policy.yaml` for a sample policy
+3. Export the token before running:
+   ```bash
+   export GITHUB_TOKEN=$(octo-sts get --scope org/repo ...)
+   claude-sandbox execute
+   ```
+
+When `GITHUB_TOKEN` is set, the container automatically configures `gh` CLI and `git` credentials. Host `~/.config/gh` is still mounted as fallback for repos not covered by the token.
+
 ## License
 
 MIT

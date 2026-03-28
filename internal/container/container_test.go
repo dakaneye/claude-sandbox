@@ -105,6 +105,25 @@ func TestBuildRunArgs(t *testing.T) {
 	t.Error("missing ANTHROPIC_API_KEY environment variable passthrough")
 }
 
+func TestBuildRunArgs_GitHubToken(t *testing.T) {
+	opts := RunOptions{
+		Image:        "claude-sandbox:latest",
+		WorktreePath: "/tmp/worktree",
+		HomeDir:      "/Users/test",
+		SpecPath:     "/tmp/worktree/spec.md",
+	}
+
+	args := BuildRunArgs(opts)
+
+	// Should pass GITHUB_TOKEN via environment inheritance
+	for i, arg := range args {
+		if arg == "-e" && i+1 < len(args) && args[i+1] == "GITHUB_TOKEN" {
+			return // Found it
+		}
+	}
+	t.Error("missing GITHUB_TOKEN environment variable passthrough")
+}
+
 func TestBuildRunArgsNonInteractive(t *testing.T) {
 	opts := RunOptions{
 		Image:        "claude-sandbox:latest",
@@ -174,6 +193,29 @@ func TestBuildClaudeCommand(t *testing.T) {
 	}
 	if !strings.Contains(cmd, "--dangerously-skip-permissions") {
 		t.Error("command should include --dangerously-skip-permissions")
+	}
+	// GitHub setup must precede the claude invocation
+	githubIdx := strings.Index(cmd, "GITHUB_TOKEN")
+	claudeIdx := strings.Index(cmd, "claude --dangerously")
+	if githubIdx >= claudeIdx {
+		t.Error("GitHub credential setup must appear before the claude invocation")
+	}
+}
+
+func TestBuildClaudeCommand_GitHubSetup(t *testing.T) {
+	cmd := buildClaudeCommand("/workspace/spec.md")
+
+	if !strings.Contains(cmd, "GITHUB_TOKEN") {
+		t.Error("command should contain GITHUB_TOKEN check")
+	}
+	if !strings.Contains(cmd, "gh auth login --with-token") {
+		t.Error("command should contain gh auth login --with-token")
+	}
+	if !strings.Contains(cmd, "credential.helper") {
+		t.Error("command should contain git credential.helper setup")
+	}
+	if !strings.Contains(cmd, "username=x-access-token") {
+		t.Error("command should contain username=x-access-token in credential.helper")
 	}
 }
 

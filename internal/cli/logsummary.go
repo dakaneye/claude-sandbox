@@ -157,7 +157,7 @@ func formatSummary(s *LogSummary) string {
 			name  string
 			count int
 		}
-		var sorted []toolCount
+		sorted := make([]toolCount, 0, len(s.ToolCounts))
 		for name, count := range s.ToolCounts {
 			sorted = append(sorted, toolCount{name, count})
 		}
@@ -227,7 +227,7 @@ func formatFallback(s *LogSummary, reason string) string {
 			name  string
 			count int
 		}
-		var sorted []toolCount
+		sorted := make([]toolCount, 0, len(s.ToolCounts))
 		for name, count := range s.ToolCounts {
 			sorted = append(sorted, toolCount{name, count})
 		}
