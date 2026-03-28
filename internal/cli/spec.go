@@ -100,7 +100,8 @@ func runSpec(cmd *cobra.Command, sessionName, branch string) error {
 	claudeCmd.Stderr = os.Stderr
 	claudeCmd.Env = append(os.Environ(), "HOME="+home)
 
-	// Set up signal handling for graceful shutdown
+	// Suppress Go's default SIGINT/SIGTERM handler so the child Claude
+	// process receives and handles Ctrl+C itself via process group.
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigChan)
