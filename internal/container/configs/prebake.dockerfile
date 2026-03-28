@@ -9,12 +9,19 @@ RUN npm install -g @anthropic-ai/claude-code prpm && \
     claude --version && \
     prpm --version
 
+# Fix known npm vulnerabilities in transitive dependencies
+RUN npm audit fix 2>/dev/null || true && \
+    npm update tar picomatch 2>/dev/null || true
+
 # Pre-install the review-code skill for code quality gates
 # prpm installs to flat directory structure: dakaneye-review-code (not @dakaneye/dakaneye-review-code)
 # Use /home/claude since the container runs as user 'claude' (not root)
 WORKDIR /home/claude
 RUN prpm install @dakaneye/dakaneye-review-code --as claude && \
     test -d .claude/skills/dakaneye-review-code
+
+# Install superpowers plugin for brainstorming, writing-plans, TDD, etc.
+RUN claude plugin install superpowers@claude-plugins-official
 
 # Pre-configure Claude Code to skip onboarding and trust prompts
 # Claude reads these from ~/.claude.json (not ~/.claude/settings.json)
@@ -35,6 +42,9 @@ RUN cat > .claude/settings.json << 'EOF'
   "autoUpdaterStatus": "disabled",
   "permissions": {
     "allow": ["Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "Read", "Glob", "Grep", "WebFetch", "WebSearch"]
+  },
+  "plugins": {
+    "superpowers@claude-plugins-official": true
   }
 }
 EOF

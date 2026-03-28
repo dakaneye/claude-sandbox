@@ -120,29 +120,47 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@6da1ae018866400525525ce74ff892880c099987 # v0.5
+
       - name: Install syft
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
+
+      - name: Get image digest
+        id: digest
+        run: |
+          IMAGE=ghcr.io/dakaneye/claude-sandbox
+          VERSION=${{ steps.version.outputs.version }}
+          DIGEST=$(crane digest "${IMAGE}:${VERSION}")
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "Image digest: $DIGEST"
+
+      - name: Scan image for vulnerabilities
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        with:
+          image: ghcr.io/dakaneye/claude-sandbox:${{ steps.version.outputs.version }}
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
 
       - name: Sign image
         run: |
           IMAGE=ghcr.io/dakaneye/claude-sandbox
-          VERSION=${{ steps.version.outputs.version }}
-          DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>&1 | grep "^Digest:" | head -1 | awk '{print $2}')
+          DIGEST=${{ steps.digest.outputs.digest }}
           cosign sign --yes "${IMAGE}@${DIGEST}"
 
-      - name: Generate and attach SBOM
+      - name: Generate and attest SBOM
         run: |
           IMAGE=ghcr.io/dakaneye/claude-sandbox
           VERSION=${{ steps.version.outputs.version }}
-          DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>&1 | grep "^Digest:" | head -1 | awk '{print $2}')
+          DIGEST=${{ steps.digest.outputs.digest }}
           syft "${IMAGE}:${VERSION}" -o spdx-json > /tmp/sbom.spdx.json
-          cosign attach sbom --sbom /tmp/sbom.spdx.json "${IMAGE}@${DIGEST}"
+          cosign attest --yes --type spdxjson --predicate /tmp/sbom.spdx.json "${IMAGE}@${DIGEST}"
 
       - name: Attest SLSA provenance
         run: |
           IMAGE=ghcr.io/dakaneye/claude-sandbox
-          VERSION=${{ steps.version.outputs.version }}
-          DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>&1 | grep "^Digest:" | head -1 | awk '{print $2}')
+          DIGEST=${{ steps.digest.outputs.digest }}
           cosign attest --yes --type slsaprovenance --predicate <(cat <<PRED
           {
             "buildType": "https://github.com/dakaneye/claude-sandbox/container-build@v1",
