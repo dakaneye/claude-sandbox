@@ -7,23 +7,42 @@ import (
 )
 
 func TestBuildMounts(t *testing.T) {
+	home := t.TempDir()
+
+	// Create host paths that should be mounted
+	for _, rel := range []string{
+		".claude/commands",
+		".ssh",
+		".config/gh",
+		".config/chainctl",
+	} {
+		if err := os.MkdirAll(home+"/"+rel, 0755); err != nil {
+			t.Fatalf("create %s: %v", rel, err)
+		}
+	}
+	if err := os.WriteFile(home+"/.gitconfig", []byte("[user]\n"), 0644); err != nil {
+		t.Fatalf("create .gitconfig: %v", err)
+	}
+
+	worktree := t.TempDir()
 	opts := MountOptions{
-		WorktreePath: "/tmp/worktree",
-		HomeDir:      "/Users/test",
+		WorktreePath: worktree,
+		HomeDir:      home,
 	}
 
 	mounts := BuildMounts(opts)
 
-	// Check for required mounts
-	// Note: settings.json, hooks, skills NOT mounted - container uses pre-baked config
-	requiredSources := []string{
-		"/Users/test/.claude/commands",
-		"/Users/test/.gitconfig",
-		"/Users/test/.ssh",
-		"/tmp/worktree",
+	// All existing paths should be mounted
+	expectedSources := []string{
+		home + "/.claude/commands",
+		home + "/.gitconfig",
+		home + "/.ssh",
+		home + "/.config/gh",
+		home + "/.config/chainctl",
+		worktree,
 	}
 
-	for _, src := range requiredSources {
+	for _, src := range expectedSources {
 		found := false
 		for _, m := range mounts {
 			if m.Source == src {
@@ -38,7 +57,7 @@ func TestBuildMounts(t *testing.T) {
 
 	// Check that worktree is read-write
 	for _, m := range mounts {
-		if m.Source == "/tmp/worktree" {
+		if m.Source == worktree {
 			if m.ReadOnly {
 				t.Error("worktree mount should be read-write")
 			}
@@ -46,6 +65,21 @@ func TestBuildMounts(t *testing.T) {
 				t.Errorf("worktree should mount to /workspace, got %s", m.Target)
 			}
 		}
+	}
+}
+
+func TestBuildMounts_MissingPaths(t *testing.T) {
+	home := t.TempDir()
+	// Don't create any optional paths — only worktree should be mounted
+
+	worktree := t.TempDir()
+	mounts := BuildMounts(MountOptions{WorktreePath: worktree, HomeDir: home})
+
+	if len(mounts) != 1 {
+		t.Errorf("expected 1 mount (worktree only) for empty home, got %d", len(mounts))
+	}
+	if mounts[0].Target != "/workspace" {
+		t.Errorf("expected /workspace mount, got %s", mounts[0].Target)
 	}
 
 	// Check that config mounts are read-only

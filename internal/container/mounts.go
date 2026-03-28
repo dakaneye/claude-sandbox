@@ -2,6 +2,7 @@
 package container
 
 import (
+	"os"
 	"path/filepath"
 )
 
@@ -19,20 +20,24 @@ type MountOptions struct {
 }
 
 // BuildMounts generates the volume mounts for the sandbox container.
+// Only mounts paths that exist on the host to avoid Docker creating empty
+// directories in the user's home.
 func BuildMounts(opts MountOptions) []Mount {
 	home := opts.HomeDir
 
+	// Workspace is always mounted (read-write)
 	mounts := []Mount{
-		// Note: settings.json NOT mounted - container uses pre-baked settings
-		// that skip onboarding and have permissions pre-configured
-		//
-		// Note: hooks NOT mounted - container should run autonomously
-		// without host-specific hooks that might interfere
-		//
-		// Note: skills NOT mounted - container uses pre-baked skills
-		// This ensures /review-code is always available for quality gates
-		//
-		// Commands are mounted so user can use custom slash commands
+		{
+			Source:   opts.WorktreePath,
+			Target:   "/workspace",
+			ReadOnly: false,
+		},
+	}
+
+	// Optional read-only mounts — only included if they exist on the host.
+	// Note: settings.json, hooks, and skills are NOT mounted; the container
+	// uses pre-baked versions to ensure consistent behavior.
+	optional := []Mount{
 		{
 			Source:   filepath.Join(home, ".claude", "commands"),
 			Target:   "/home/claude/.claude/commands",
@@ -58,12 +63,12 @@ func BuildMounts(opts MountOptions) []Mount {
 			Target:   "/home/claude/.config/chainctl",
 			ReadOnly: true,
 		},
-		// Read-write mounts
-		{
-			Source:   opts.WorktreePath,
-			Target:   "/workspace",
-			ReadOnly: false,
-		},
+	}
+
+	for _, m := range optional {
+		if _, err := os.Stat(m.Source); err == nil {
+			mounts = append(mounts, m)
+		}
 	}
 
 	return mounts
