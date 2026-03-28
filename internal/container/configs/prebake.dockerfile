@@ -4,14 +4,28 @@ FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
 
-# Install Claude Code and prpm globally
+# Switch to root to patch system-level packages and install global npm packages
+USER root
+
+# Patch vulnerable npm bundled dependencies before any npm operations
+# picomatch 4.0.3 -> 4.0.4 (GHSA-c2c7-rcm5-vvqj, GHSA-3v7f-55p6-f55p)
+# brace-expansion 5.0.4 -> 5.0.5 (GHSA-f886-m6hf-6m8v)
+RUN cd /tmp && \
+    npm pack picomatch@4.0.4 2>/dev/null && \
+    tar xzf picomatch-4.0.4.tgz -C /usr/lib/node_modules/npm/node_modules/tinyglobby/node_modules/picomatch --strip-components=1 && \
+    npm pack brace-expansion@5.0.5 2>/dev/null && \
+    tar xzf brace-expansion-5.0.5.tgz -C /usr/lib/node_modules/npm/node_modules/brace-expansion --strip-components=1 && \
+    rm -f /tmp/*.tgz
+
+# Switch back to non-root user for all subsequent operations
+USER claude
+
+# Install Claude Code and prpm globally, then force-update tar
+# tar 6.2.1 -> latest (GHSA-34x7-hfp2-rc4v and 5 others via prpm dep)
 RUN npm install -g @anthropic-ai/claude-code prpm && \
+    npm install -g tar@latest && \
     claude --version && \
     prpm --version
-
-# Fix known npm vulnerabilities in transitive dependencies
-RUN npm audit fix 2>/dev/null || true && \
-    npm update tar picomatch 2>/dev/null || true
 
 # Pre-install the review-code skill for code quality gates
 # prpm installs to flat directory structure: dakaneye-review-code (not @dakaneye/dakaneye-review-code)
