@@ -17,6 +17,7 @@ func newShipCommand() *cobra.Command {
 	var sessionFlag string
 	var skipReview bool
 	var keepWorktree bool
+	var dryRun bool
 
 	cmd := &cobra.Command{
 		Use:   "ship",
@@ -32,20 +33,23 @@ The command:
   2. Prompts user to review COMPLETION.md
   3. Prompts for confirmation
   4. Invokes Claude with /create-pr skill
-  5. Optionally cleans up the worktree`,
+  5. Optionally cleans up the worktree
+
+Use --dry-run to validate without creating a PR.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runShip(cmd, sessionFlag, skipReview, keepWorktree)
+			return runShip(cmd, sessionFlag, skipReview, keepWorktree, dryRun)
 		},
 	}
 
 	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID or name")
 	cmd.Flags().BoolVar(&skipReview, "skip-review", false, "Skip COMPLETION.md review prompt")
 	cmd.Flags().BoolVar(&keepWorktree, "keep-worktree", false, "Don't clean up worktree after shipping")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate without creating a PR")
 
 	return cmd
 }
 
-func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bool) error {
+func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree, dryRun bool) error {
 	repoPath, err := findRepoRoot()
 	if err != nil {
 		return err
@@ -68,6 +72,14 @@ func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bo
 
 	if parseCompletionStatus(string(content)) != state.StatusSuccess {
 		return errors.New("COMPLETION.md does not show SUCCESS status. Cannot ship blocked or failed work")
+	}
+
+	cmd.Println("✓ COMPLETION.md shows SUCCESS status")
+	cmd.Printf("✓ Ready to ship from branch %s\n", sess.Branch)
+
+	if dryRun {
+		cmd.Println("Dry run: would launch Claude with /create-pr")
+		return nil
 	}
 
 	if !skipReview {

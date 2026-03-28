@@ -139,8 +139,21 @@ else
     exit 1
 fi
 
-# --- Step 4: Clean ---
+# --- Step 4: Ship (dry-run) ---
 echo ""
-echo "--- Step 4: Clean ---"
+echo "--- Step 4: Ship (dry-run) ---"
+SHIP_OUTPUT=$(claude-sandbox ship --session "$SESSION_NAME" --dry-run 2>&1)
+echo "$SHIP_OUTPUT"
+
+if echo "$SHIP_OUTPUT" | grep -q "Dry run: would launch Claude"; then
+    echo "✓ Ship dry-run validated"
+else
+    echo "✗ Ship dry-run unexpected output" >&2
+    exit 1
+fi
+
+# --- Step 5: Clean ---
+echo ""
+echo "--- Step 5: Clean ---"
 claude-sandbox clean --session "$SESSION_NAME" --all
 echo "✓ Clean completed"

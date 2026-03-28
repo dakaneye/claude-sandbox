@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Full E2E workflow test: spec -> execute -> status -> clean
+# Full E2E workflow test: spec -> execute -> status -> ship (dry-run) -> clean
 #
 # WARNING: This test costs API credits and takes 10-20 minutes.
 # The execute command runs Claude with full quality gates (build, lint, test,
 # /review-code grade A) which requires a complete iteration cycle.
 #
 # For a fast functional test, run: test/e2e/workflow_test.sh
-#
-# ship is excluded -- creates real PRs, would pollute repos with test garbage
 
 SESSION_NAME="e2e-full-$$"
 REPO_ROOT=""
@@ -72,7 +70,7 @@ if [[ $EXECUTE_EXIT -eq 124 ]]; then
     exit 1
 fi
 
-# 3. Status
+# 3. Status (should show terminal state)
 echo ""
 echo "--- Step 3: Status ---"
 STATUS_OUTPUT=$(claude-sandbox status --session "$SESSION_NAME" 2>&1)
@@ -85,8 +83,23 @@ else
     exit 1
 fi
 
-# 4. Clean
+# 4. Ship (dry-run — validates COMPLETION.md without creating a PR)
 echo ""
-echo "--- Step 4: Clean ---"
+echo "--- Step 4: Ship (dry-run) ---"
+SHIP_OUTPUT=$(claude-sandbox ship --session "$SESSION_NAME" --dry-run 2>&1)
+echo "$SHIP_OUTPUT"
+
+if echo "$SHIP_OUTPUT" | grep -q "Dry run: would launch Claude"; then
+    echo "✓ Ship dry-run validated successfully"
+elif echo "$SHIP_OUTPUT" | grep -q "does not show SUCCESS"; then
+    echo "⚠ Ship validation failed (execute may not have succeeded)"
+else
+    echo "✗ Ship dry-run output unexpected" >&2
+    exit 1
+fi
+
+# 5. Clean
+echo ""
+echo "--- Step 5: Clean ---"
 claude-sandbox clean --session "$SESSION_NAME" --all
 echo "✓ Clean completed"
