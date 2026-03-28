@@ -198,6 +198,54 @@ func TestFormatSummary(t *testing.T) {
 	}
 }
 
+func TestParseLogEvents_RecordedSession(t *testing.T) {
+	path := filepath.Join("..", "..", "testdata", "session-log-sample.json")
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		t.Skip("testdata/session-log-sample.json not found")
+	}
+
+	summary, err := parseLogEvents(path, time.Date(2026, 3, 28, 3, 31, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if summary.TotalTools != 7 {
+		t.Errorf("TotalTools = %d, want 7", summary.TotalTools)
+	}
+	if summary.ToolCounts["Bash"] != 4 {
+		t.Errorf("Bash count = %d, want 4", summary.ToolCounts["Bash"])
+	}
+	if summary.ToolCounts["Read"] != 1 {
+		t.Errorf("Read count = %d, want 1", summary.ToolCounts["Read"])
+	}
+	if summary.ToolCounts["Edit"] != 1 {
+		t.Errorf("Edit count = %d, want 1", summary.ToolCounts["Edit"])
+	}
+	if summary.ToolCounts["Task"] != 1 {
+		t.Errorf("Task count = %d, want 1", summary.ToolCounts["Task"])
+	}
+
+	for _, gate := range []string{"build", "lint", "test"} {
+		if !summary.GateMentions[gate] {
+			t.Errorf("gate %q not detected", gate)
+		}
+	}
+	// review-code is in Task input, not Bash -- should NOT be detected
+	if summary.GateMentions["review-code"] {
+		t.Error("review-code should not be detected from Task tool")
+	}
+
+	if len(summary.TaskProgress) != 3 {
+		t.Errorf("TaskProgress length = %d, want 3", len(summary.TaskProgress))
+	}
+
+	result := formatSummary(summary)
+	if result == "" {
+		t.Error("formatSummary returned empty string")
+	}
+}
+
 func TestFormatFallback(t *testing.T) {
 	summary := &LogSummary{
 		ElapsedTime: 5 * time.Minute,

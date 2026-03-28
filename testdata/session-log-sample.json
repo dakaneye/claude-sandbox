@@ -1,0 +1,19 @@
+{"type":"system","subtype":"init","session_id":"test-session"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"ls /workspace && cat /workspace/PLAN.md","description":"Check workspace contents and PLAN.md"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"main.go\nPLAN.md\n# Test Plan\n..."}]},"timestamp":"2026-03-28T03:31:38.037Z"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"make build 2>&1 && echo BUILD PASS","description":"Run build"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"BUILD PASS"}]},"timestamp":"2026-03-28T03:32:00.000Z"}
+{"type":"system","subtype":"task_progress","description":"Running build checks"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/workspace/internal/cli/status.go"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"package cli\n..."}]},"timestamp":"2026-03-28T03:32:10.000Z"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/workspace/internal/cli/status.go","old_string":"old","new_string":"new"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"File updated"}]},"timestamp":"2026-03-28T03:32:20.000Z"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./... 2>&1","description":"Run tests"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"ok  \tgithub.com/example\t0.5s"}]},"timestamp":"2026-03-28T03:33:00.000Z"}
+{"type":"system","subtype":"task_progress","description":"Running tests"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"golangci-lint run ./... 2>&1 && echo LINT PASS","description":"Run lint"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"LINT PASS"}]},"timestamp":"2026-03-28T03:33:30.000Z"}
+{"type":"system","subtype":"task_progress","description":"Checking lint results"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Task","input":{"description":"Run /review-code"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"Grade A (135/140)"}]},"timestamp":"2026-03-28T03:35:00.000Z"}
+{"type":"result","subtype":"success","duration_ms":210000,"result":"Implementation complete."}
