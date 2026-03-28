@@ -54,7 +54,7 @@ release:
   github:
     owner: dakaneye
     name: claude-sandbox
-  draft: true
+  draft: false
   prerelease: auto
   header: |
     ## Installation
