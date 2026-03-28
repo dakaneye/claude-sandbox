@@ -145,36 +145,56 @@ func processUserEvent(s *LogSummary, event *logEvent) {
 	s.LastToolTime = t
 }
 
+type toolCount struct {
+	name  string
+	count int
+}
+
+var gateOrder = []string{"build", "lint", "test", "review-code"}
+
+func writeToolCounts(b *strings.Builder, counts map[string]int) {
+	if len(counts) == 0 {
+		return
+	}
+	sorted := make([]toolCount, 0, len(counts))
+	for name, count := range counts {
+		sorted = append(sorted, toolCount{name, count})
+	}
+	slices.SortFunc(sorted, func(a, b toolCount) int {
+		return b.count - a.count
+	})
+	b.WriteString("Tools: ")
+	for i, tc := range sorted {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(b, "%s(%d)", tc.name, tc.count)
+	}
+	b.WriteString("\n")
+}
+
+func writeGates(b *strings.Builder, mentions map[string]bool) {
+	b.WriteString("Gates: ")
+	for i, gate := range gateOrder {
+		if i > 0 {
+			b.WriteString(" | ")
+		}
+		if mentions[gate] {
+			fmt.Fprintf(b, "%s seen", gate)
+		} else {
+			fmt.Fprintf(b, "%s ?", gate)
+		}
+	}
+	b.WriteString("\n")
+}
+
 // formatSummary produces a condensed text summary for haiku analysis.
 func formatSummary(s *LogSummary) string {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "Session: %s elapsed, %d tool calls\n", s.ElapsedTime.Round(time.Second), s.TotalTools)
+	writeToolCounts(&b, s.ToolCounts)
 
-	// Tool counts sorted by frequency
-	if len(s.ToolCounts) > 0 {
-		type toolCount struct {
-			name  string
-			count int
-		}
-		sorted := make([]toolCount, 0, len(s.ToolCounts))
-		for name, count := range s.ToolCounts {
-			sorted = append(sorted, toolCount{name, count})
-		}
-		slices.SortFunc(sorted, func(a, b toolCount) int {
-			return b.count - a.count
-		})
-		b.WriteString("Tools: ")
-		for i, tc := range sorted {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			fmt.Fprintf(&b, "%s(%d)", tc.name, tc.count)
-		}
-		b.WriteString("\n")
-	}
-
-	// Last tool
 	if s.LastTool != "" {
 		b.WriteString("Last: ")
 		b.WriteString(s.LastTool)
@@ -188,7 +208,6 @@ func formatSummary(s *LogSummary) string {
 		b.WriteString("\n")
 	}
 
-	// Task progress
 	if len(s.TaskProgress) > 0 {
 		b.WriteString("Recent progress:\n")
 		for _, desc := range s.TaskProgress {
@@ -196,21 +215,7 @@ func formatSummary(s *LogSummary) string {
 		}
 	}
 
-	// Gates
-	gates := []string{"build", "lint", "test", "review-code"}
-	b.WriteString("Gates: ")
-	for i, gate := range gates {
-		if i > 0 {
-			b.WriteString(" | ")
-		}
-		if s.GateMentions[gate] {
-			fmt.Fprintf(&b, "%s seen", gate)
-		} else {
-			fmt.Fprintf(&b, "%s ?", gate)
-		}
-	}
-	b.WriteString("\n")
-
+	writeGates(&b, s.GateMentions)
 	return b.String()
 }
 
@@ -219,30 +224,8 @@ func formatFallback(s *LogSummary, reason string) string {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "⚠ Analysis unavailable: %s\n\n", reason)
-
 	fmt.Fprintf(&b, "Progress: %d tool calls over %s\n", s.TotalTools, s.ElapsedTime.Round(time.Second))
-
-	if len(s.ToolCounts) > 0 {
-		type toolCount struct {
-			name  string
-			count int
-		}
-		sorted := make([]toolCount, 0, len(s.ToolCounts))
-		for name, count := range s.ToolCounts {
-			sorted = append(sorted, toolCount{name, count})
-		}
-		slices.SortFunc(sorted, func(a, b toolCount) int {
-			return b.count - a.count
-		})
-		b.WriteString("Tools: ")
-		for i, tc := range sorted {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			fmt.Fprintf(&b, "%s(%d)", tc.name, tc.count)
-		}
-		b.WriteString("\n")
-	}
+	writeToolCounts(&b, s.ToolCounts)
 
 	if s.LastTool != "" {
 		fmt.Fprintf(&b, "Last: %s", s.LastTool)
@@ -252,20 +235,7 @@ func formatFallback(s *LogSummary, reason string) string {
 		b.WriteString("\n")
 	}
 
-	gates := []string{"build", "lint", "test", "review-code"}
-	b.WriteString("Gates: ")
-	for i, gate := range gates {
-		if i > 0 {
-			b.WriteString(" | ")
-		}
-		if s.GateMentions[gate] {
-			b.WriteString(gate + " seen")
-		} else {
-			b.WriteString(gate + " ?")
-		}
-	}
-	b.WriteString("\n")
-
+	writeGates(&b, s.GateMentions)
 	return b.String()
 }
 
