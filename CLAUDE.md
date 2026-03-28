@@ -9,8 +9,10 @@ CLI tool for running Claude Code in sandboxed Docker containers with git worktre
 ```
 cmd/claude-sandbox/main.go    Entry point
 internal/
-  cli/                        Cobra commands (spec, execute, status, stop, ship, clean, build)
+  cli/                        Cobra commands (spec, execute, status, stop, ship, clean, list, build)
   cli/helpers.go              Shared CLI utilities (findRepoRoot, promptYesNo)
+  cli/completion.go           COMPLETION.md status parsing (shared by execute + ship)
+  cli/logsummary.go           Stream-json log parsing for status progress analysis
   container/                  Docker container management + embedded build configs
   state/                      Session state (JSON in .claude-sandbox/sessions/)
   worktree/                   Git worktree operations
