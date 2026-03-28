@@ -74,11 +74,15 @@ func runExecute(cmd *cobra.Command, sessionFlag string) error {
 		return fmt.Errorf("PLAN.md not found in worktree: %s", planPath)
 	}
 
-	// Auto-build container image if missing
+	// Resolve container image: local → pull → build
 	if !container.ImageExists(container.DefaultImage) {
-		cmd.Println("Container image not found. Building...")
-		if err := container.Build(cmd.OutOrStdout(), false); err != nil {
-			return fmt.Errorf("build image: %w", err)
+		cmd.Println("Container image not found. Pulling from GHCR...")
+		if err := container.Pull(cmd.OutOrStdout()); err != nil {
+			cmd.PrintErrf("Pull failed: %v\n", err)
+			cmd.Println("Falling back to local build...")
+			if err := container.Build(cmd.OutOrStdout(), false); err != nil {
+				return fmt.Errorf("build image: %w", err)
+			}
 		}
 		cmd.Println()
 	}

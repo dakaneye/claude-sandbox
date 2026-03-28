@@ -280,3 +280,12 @@ func TestRunOptions_MissingAPIKey(t *testing.T) {
 		t.Errorf("error should mention ANTHROPIC_API_KEY, got: %v", err)
 	}
 }
+
+func TestGHCRImageConstant(t *testing.T) {
+	if GHCRImage == "" {
+		t.Error("GHCRImage should not be empty")
+	}
+	if !strings.HasPrefix(GHCRImage, "ghcr.io/") {
+		t.Errorf("GHCRImage should start with ghcr.io/, got: %s", GHCRImage)
+	}
+}

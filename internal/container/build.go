@@ -123,3 +123,27 @@ func Build(w io.Writer, force bool) error {
 	fmt.Fprintln(w, "Image built: claude-sandbox:latest")
 	return nil
 }
+
+// Pull pulls the sandbox image from GHCR and tags it as the default local image.
+func Pull(w io.Writer) error {
+	if err := CheckDocker(); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(w, "Pulling %s...\n", GHCRImage)
+	cmd := exec.Command("docker", "pull", GHCRImage)
+	cmd.Stdout = w
+	cmd.Stderr = w
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("pull image: %w", err)
+	}
+
+	// Tag as local default so Run() can use it
+	tagCmd := exec.Command("docker", "tag", GHCRImage, DefaultImage)
+	if err := tagCmd.Run(); err != nil {
+		return fmt.Errorf("tag image: %w", err)
+	}
+
+	fmt.Fprintf(w, "Image ready: %s\n", DefaultImage)
+	return nil
+}

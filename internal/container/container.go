@@ -12,8 +12,11 @@ import (
 )
 
 const (
-	// DefaultImage is the default sandbox container image.
+	// DefaultImage is the local sandbox container image tag.
 	DefaultImage = "claude-sandbox:latest"
+
+	// GHCRImage is the public container image on GitHub Container Registry.
+	GHCRImage = "ghcr.io/dakaneye/claude-sandbox:latest"
 
 	// HistoryVolumeName is the Docker volume for Claude history persistence.
 	HistoryVolumeName = "claude-sandbox-history"
