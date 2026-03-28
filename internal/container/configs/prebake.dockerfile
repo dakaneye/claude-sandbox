@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ARG BASE_IMAGE=claude-sandbox:base-arm64
 FROM ${BASE_IMAGE}
 

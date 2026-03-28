@@ -87,8 +87,8 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           MAJOR=${{ steps.version.outputs.major }}
 
-          # Build amd64 (DOCKER_BUILDKIT=1 for heredoc syntax support)
-          DOCKER_BUILDKIT=1 docker build \
+          # Build amd64 (BuildKit is default on Docker 28+, heredoc syntax supported)
+          docker build \
             -t "${IMAGE}:${VERSION}-amd64" \
             --build-arg BASE_IMAGE=claude-sandbox:base-amd64 \
             --label "org.opencontainers.image.source=https://github.com/dakaneye/claude-sandbox" \
@@ -98,8 +98,8 @@ jobs:
             /tmp/build
           docker push "${IMAGE}:${VERSION}-amd64"
 
-          # Build arm64 (cross-compile via buildx with base image from registry)
-          # Load arm64 base to a temporary registry tag so buildx can access it
+          # Build arm64: push base to GHCR first so buildx can access it
+          # (buildx uses an isolated builder that can't see docker-loaded images)
           docker tag claude-sandbox:base-arm64 "${IMAGE}:base-arm64"
           docker push "${IMAGE}:base-arm64"
           docker buildx build \
