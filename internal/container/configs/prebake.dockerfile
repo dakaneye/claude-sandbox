@@ -20,12 +20,16 @@ RUN cd /tmp && \
 # Switch back to non-root user for all subsequent operations
 USER claude
 
-# Install Claude Code and prpm globally, then force-update tar
-# tar 6.2.1 -> latest (GHSA-34x7-hfp2-rc4v and 5 others via prpm dep)
+# Install Claude Code and prpm globally
 RUN npm install -g @anthropic-ai/claude-code prpm && \
-    npm install -g tar@latest && \
     claude --version && \
     prpm --version
+
+# Patch prpm's bundled tar 6.2.1 (6 high CVEs: path traversal, symlink attacks)
+RUN cd /tmp && \
+    npm pack tar@latest 2>/dev/null && \
+    tar xzf tar-*.tgz -C /home/claude/.npm-global/lib/node_modules/prpm/node_modules/tar --strip-components=1 && \
+    rm -f /tmp/tar-*.tgz
 
 # Pre-install the review-code skill for code quality gates
 # prpm installs to flat directory structure: dakaneye-review-code (not @dakaneye/dakaneye-review-code)
