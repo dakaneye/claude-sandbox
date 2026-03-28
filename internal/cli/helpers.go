@@ -12,7 +12,9 @@ import (
 	"github.com/dakaneye/claude-sandbox/internal/worktree"
 )
 
-// findRepoRoot finds the root of the git repository from cwd.
+// findRepoRoot finds the main repository root from cwd.
+// Returns the main repo root even when called from inside a worktree,
+// so session state in .claude-sandbox/sessions/ is always found.
 func findRepoRoot() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -23,13 +25,12 @@ func findRepoRoot() (string, error) {
 		return "", fmt.Errorf("not a git repository")
 	}
 
-	// Get the toplevel
 	wt, err := worktree.Detect(cwd)
 	if err != nil {
 		return "", fmt.Errorf("detect git root: %w", err)
 	}
 
-	return wt.Path, nil
+	return wt.Repo, nil
 }
 
 // promptYesNo prompts the user for a yes/no confirmation.
