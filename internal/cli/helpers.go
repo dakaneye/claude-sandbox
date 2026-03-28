@@ -1,4 +1,3 @@
-// internal/cli/helpers.go
 package cli
 
 import (

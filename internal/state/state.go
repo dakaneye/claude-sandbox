@@ -257,17 +257,14 @@ func parseSession(data []byte) (*Session, error) {
 	return &sess, nil
 }
 
-// sessionsPath returns the path to the sessions directory.
 func sessionsPath(repoPath string) string {
 	return filepath.Join(repoPath, stateDir, sessionsDir)
 }
 
-// activePath returns the path to the active file.
 func activePath(repoPath string) string {
 	return filepath.Join(repoPath, stateDir, activeFile)
 }
 
-// sessionPath returns the path to a session file.
 func sessionPath(repoPath, id string) string {
 	return filepath.Join(sessionsPath(repoPath), id+".json")
 }
