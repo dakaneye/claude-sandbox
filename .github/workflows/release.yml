@@ -127,14 +127,14 @@ jobs:
         run: |
           IMAGE=ghcr.io/dakaneye/claude-sandbox
           VERSION=${{ steps.version.outputs.version }}
-          DIGEST=$(docker manifest inspect "${IMAGE}:${VERSION}" -v | jq -r '.digest // .[0].Descriptor.digest')
+          DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}')
           cosign sign --yes "${IMAGE}@${DIGEST}"
 
       - name: Generate and attach SBOM
         run: |
           IMAGE=ghcr.io/dakaneye/claude-sandbox
           VERSION=${{ steps.version.outputs.version }}
-          DIGEST=$(docker manifest inspect "${IMAGE}:${VERSION}" -v | jq -r '.digest // .[0].Descriptor.digest')
+          DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}')
           syft "${IMAGE}:${VERSION}" -o spdx-json > /tmp/sbom.spdx.json
           cosign attach sbom --sbom /tmp/sbom.spdx.json "${IMAGE}@${DIGEST}"
 
@@ -142,7 +142,7 @@ jobs:
         run: |
           IMAGE=ghcr.io/dakaneye/claude-sandbox
           VERSION=${{ steps.version.outputs.version }}
-          DIGEST=$(docker manifest inspect "${IMAGE}:${VERSION}" -v | jq -r '.digest // .[0].Descriptor.digest')
+          DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}')
           cosign attest --yes --type slsaprovenance --predicate <(cat <<PRED
           {
             "buildType": "https://github.com/dakaneye/claude-sandbox/container-build@v1",
