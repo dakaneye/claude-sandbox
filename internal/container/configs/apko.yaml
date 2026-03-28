@@ -27,7 +27,6 @@ contents:
 
     # Cloud/infra tools
     - kubectl
-    - terraform
     - gh
 
     # Dev utilities
