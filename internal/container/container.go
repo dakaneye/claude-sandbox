@@ -41,11 +41,10 @@ func BuildRunArgs(opts RunOptions) []string {
 
 	if opts.Interactive {
 		args = append(args, "-it")
-	} else {
-		// Allocate PTY for non-interactive mode so Claude outputs to stdout.
-		// Without PTY, Claude's UI doesn't write to stdout/stderr, resulting in empty logs.
-		args = append(args, "-t")
 	}
+	// Non-interactive mode: no -t flag needed since we use -p (print) mode
+	// which outputs to stdout without requiring a PTY. Using -t with file
+	// redirection breaks output capture.
 
 	// Add mounts
 	mounts := BuildMounts(MountOptions{
@@ -124,8 +123,9 @@ func buildClaudeCommand(specPath string) string {
 	escaped := shellEscape(specPath)
 	// Holistic prompt: assess current state, do only what's needed to reach grade A
 	// -p (print mode) skips the workspace trust dialog for non-interactive execution
+	// --output-format stream-json enables real-time streaming to log files
 	// --verbose enables detailed output logging
-	return fmt.Sprintf(`claude --dangerously-skip-permissions --verbose -p "Your goal: get this project to pass all quality gates with /review-code grade A.
+	return fmt.Sprintf(`claude --dangerously-skip-permissions --verbose -p --output-format stream-json "Your goal: get this project to pass all quality gates with /review-code grade A.
 
 Spec: %s
 
