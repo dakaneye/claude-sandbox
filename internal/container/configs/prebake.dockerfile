@@ -20,9 +20,11 @@ WORKDIR /home/claude
 RUN prpm install @dakaneye/dakaneye-review-code --as claude && \
     test -d .claude/skills/dakaneye-review-code
 
-# Note: Superpowers and other plugins are mounted from the host at runtime
-# via ~/.claude/plugins (read-only). They cannot be pre-installed because
-# `claude plugin install` requires marketplace auth not available at build time.
+# Add default plugin marketplaces (skipped by hasCompletedOnboarding=true)
+# and install superpowers plugin for brainstorming, writing-plans, TDD, etc.
+RUN claude plugin marketplace add anthropics/claude-plugins-official && \
+    claude plugin marketplace add anthropics/claude-code --sparse .claude-plugin plugins && \
+    claude plugin install superpowers@claude-plugins-official
 
 # Pre-configure Claude Code to skip onboarding and trust prompts
 # Claude reads these from ~/.claude.json (not ~/.claude/settings.json)
