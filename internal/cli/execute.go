@@ -100,8 +100,11 @@ func runExecute(cmd *cobra.Command, sessionFlag string) error {
 	}
 
 	// Update session status to running and record start time
+	// Clear completed_at and error from any previous run
 	sess.Status = state.StatusRunning
 	sess.StartedAt = time.Now()
+	sess.CompletedAt = time.Time{}
+	sess.Error = ""
 	if err := state.Update(repoPath, sess); err != nil {
 		return fmt.Errorf("update session status: %w", err)
 	}
