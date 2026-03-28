@@ -91,7 +91,7 @@ func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bo
 
 	cmd.Println("Launching Claude to create PR via /create-pr...")
 
-	claudeCmd := exec.Command("claude", "--dangerously-skip-permissions", "/create-pr")
+	claudeCmd := exec.Command("claude", "/create-pr")
 	claudeCmd.Dir = sess.WorktreePath
 	claudeCmd.Stdin = os.Stdin
 	claudeCmd.Stdout = os.Stdout
