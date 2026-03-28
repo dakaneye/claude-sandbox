@@ -43,16 +43,22 @@ func runStatus(cmd *cobra.Command, sessionFlag string) error {
 	cmd.Printf("Branch:  %s\n", sess.Branch)
 	cmd.Printf("Status:  %s\n", sess.Status)
 	cmd.Printf("Path:    %s\n", sess.WorktreePath)
+	cmd.Println()
 
-	// Elapsed time (from execution start, not session creation)
-	var elapsed time.Duration
+	// Timestamps
+	const timeFmt = "2006-01-02 15:04:05"
+	cmd.Printf("Spec created:        %s\n", sess.CreatedAt.Local().Format(timeFmt))
+
 	if !sess.StartedAt.IsZero() {
+		cmd.Printf("Execution started:   %s\n", sess.StartedAt.Local().Format(timeFmt))
+
 		if !sess.CompletedAt.IsZero() {
-			elapsed = sess.CompletedAt.Sub(sess.StartedAt)
+			duration := sess.CompletedAt.Sub(sess.StartedAt).Round(time.Second)
+			cmd.Printf("Execution completed: %s (%s)\n", sess.CompletedAt.Local().Format(timeFmt), duration)
 		} else {
-			elapsed = time.Since(sess.StartedAt)
+			elapsed := time.Since(sess.StartedAt).Round(time.Second)
+			cmd.Printf("Elapsed:             %s\n", elapsed)
 		}
-		cmd.Printf("Elapsed: %s\n", elapsed.Round(time.Second))
 	}
 	cmd.Println()
 

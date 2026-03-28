@@ -15,16 +15,22 @@ WORKDIR /home/claude
 RUN prpm install @dakaneye/dakaneye-review-code --as claude && \
     test -d .claude/skills/dakaneye-review-code
 
-# Pre-configure Claude Code to skip onboarding prompts
-# - hasCompletedOnboarding: skip first-run wizard
-# - theme: pre-select dark mode
-# - hasTrustDialogAccepted: skip folder trust prompt
-# - autoUpdaterStatus: disable update checks
-RUN cat > .claude/settings.json << 'EOF'
+# Pre-configure Claude Code to skip onboarding and trust prompts
+# Claude reads these from ~/.claude.json (not ~/.claude/settings.json)
+# See: https://github.com/anthropics/claude-code/issues/4714
+# See: https://github.com/anthropics/claude-code/issues/5572
+RUN cat > .claude.json << 'EOF'
 {
   "hasCompletedOnboarding": true,
-  "theme": "dark",
   "hasTrustDialogAccepted": true,
+  "hasTrustDialogHooksAccepted": true
+}
+EOF
+
+# Permissions and other settings go in ~/.claude/settings.json
+RUN cat > .claude/settings.json << 'EOF'
+{
+  "theme": "dark",
   "autoUpdaterStatus": "disabled",
   "permissions": {
     "allow": ["Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "Read", "Glob", "Grep", "WebFetch", "WebSearch"]

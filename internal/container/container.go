@@ -42,7 +42,8 @@ func BuildRunArgs(opts RunOptions) []string {
 	if opts.Interactive {
 		args = append(args, "-it")
 	} else {
-		// Allocate pseudo-TTY even for non-interactive mode so Claude outputs to stdout
+		// Allocate PTY for non-interactive mode so Claude outputs to stdout.
+		// Without PTY, Claude's UI doesn't write to stdout/stderr, resulting in empty logs.
 		args = append(args, "-t")
 	}
 
