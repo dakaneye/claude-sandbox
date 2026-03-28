@@ -1,105 +1,166 @@
 # claude-sandbox
 
 [![CI](https://github.com/dakaneye/claude-sandbox/actions/workflows/ci.yml/badge.svg)](https://github.com/dakaneye/claude-sandbox/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/dakaneye/claude-sandbox)](https://goreportcard.com/report/github.com/dakaneye/claude-sandbox)
-[![Go Reference](https://pkg.go.dev/badge/github.com/dakaneye/claude-sandbox.svg)](https://pkg.go.dev/github.com/dakaneye/claude-sandbox)
 [![Release](https://img.shields.io/github/v/release/dakaneye/claude-sandbox)](https://github.com/dakaneye/claude-sandbox/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Sandboxed execution environment for autonomous Claude Code implementation.
+Run Claude Code autonomously in sandboxed Docker containers with git worktree isolation.
 
-## Overview
+## What it does
 
-`claude-sandbox` enables spec-driven development where Claude implements features autonomously in an isolated container. The tool provides:
+You describe what you want built. Claude implements it in an isolated container, iterates on quality gates (build, lint, test, code review), and produces a branch ready for PR.
 
-- **Git worktree isolation** - Each sandbox runs in its own worktree with a dedicated branch
-- **Container execution** - Claude runs inside a Docker container with controlled mounts
-- **Advisory quality gates** - Claude is prompted to follow quality gates (build, lint, test, security, etc.)
-- **Advisory action blocking** - PreToolUse hooks warn about external side effects
-
-> **Note**: Quality gates and action blocking are advisory. Claude is instructed to follow them but enforcement is prompt-based, not hard-coded. Human review before `ship` remains essential.
-
-## Installation
-
-```bash
-# Via go install (once released)
-go install github.com/dakaneye/claude-sandbox/cmd/claude-sandbox@latest
-
-# Or build from source
-git clone https://github.com/dakaneye/claude-sandbox.git
-cd claude-sandbox
-make build
-make install
-
-# Build container image (requires apko)
-cd container && ./build.sh --load
+```
+spec → execute → status → ship → clean
 ```
 
-### Prerequisites
+## Prerequisites
 
-- Go 1.25.5
-- Docker
-- [apko](https://github.com/chainguard-dev/apko) (for container builds)
-- [prpm](https://prpm.dev) (for code review skill)
+- [Docker](https://docs.docker.com/get-docker/)
+- [apko](https://github.com/chainguard-dev/apko) (container image build)
+- [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) (`npm install -g @anthropic-ai/claude-code`)
+- `ANTHROPIC_API_KEY` environment variable
+
+## Install
+
+**From release binary** (recommended):
+
+```bash
+# Download from GitHub Releases
+# https://github.com/dakaneye/claude-sandbox/releases/latest
+
+# macOS arm64
+curl -L https://github.com/dakaneye/claude-sandbox/releases/latest/download/claude-sandbox_$(curl -s https://api.github.com/repos/dakaneye/claude-sandbox/releases/latest | grep tag_name | cut -d'"' -f4 | sed 's/v//')_darwin_arm64.tar.gz | tar xz
+mv claude-sandbox /usr/local/bin/
+```
+
+**From source:**
+
+```bash
+go install github.com/dakaneye/claude-sandbox/cmd/claude-sandbox@latest
+```
+
+**Build the container image** (required before first `execute`):
+
+```bash
+claude-sandbox build
+```
+
+This uses apko to build a minimal container with Claude CLI, pre-configured settings, and the review-code skill.
 
 ## Quick Start
 
 ```bash
-# 1. Initialize a worktree for isolated work
-claude-sandbox init ~/dev/my-project
+export ANTHROPIC_API_KEY=sk-ant-...
 
-# 2. Create your spec in the worktree
-cd ~/dev/my-project-sandbox-abc123
-# ... write spec to ./docs/specs/feature/
+# 1. Create a session — launches interactive Claude for planning
+claude-sandbox spec --name my-feature
 
-# 3. Run Claude autonomously
-claude-sandbox run --spec ./docs/specs/feature/
+# 2. Execute — Claude implements the spec in a container
+claude-sandbox execute
 
-# 4. Review and ship when notified
-cat COMPLETION.md
-git diff main...HEAD
+# 3. Check progress
+claude-sandbox status
+
+# 4. Review and create PR
 claude-sandbox ship
+
+# 5. Clean up
+claude-sandbox clean
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `init <path>` | Create git worktree for sandboxed work |
-| `run --spec <path>` | Launch Claude in container to implement spec |
-| `ship` | Create PR after reviewing completed work |
-| `status` | Show current session status |
-| `logs [-f]` | View session logs |
-| `stop` | Stop running session |
-| `clean` | Remove stale worktrees |
+| `spec` | Create worktree + session, launch Claude for planning |
+| `execute` | Run Claude in container to implement the spec |
+| `status` | Show session status with progress analysis |
+| `list` | List all sessions (alias: `ls`) |
+| `ship` | Review COMPLETION.md and create PR |
+| `stop` | Stop a running container |
+| `clean` | Remove sessions and worktrees |
+| `build` | Build the sandbox container image |
 
-## Advisory Quality Gates
+### spec
 
-Claude is prompted to follow these quality gates before claiming completion:
+```bash
+claude-sandbox spec --name my-feature              # auto-generated branch
+claude-sandbox spec --name my-feature --branch dakaneye/my-feature  # custom branch
+```
 
-1. **Build** - Project builds successfully
-2. **Lint** - No linting errors
-3. **Test** - All tests pass
-4. **Security** - No new vulnerabilities
-5. **Spec coverage** - All spec items addressed
-6. **Commit hygiene** - Atomic commits with conventional messages
-7. **/review-code** - Grade A from code review
+Creates a git worktree and launches Claude interactively. Use `/brainstorming` and `/writing-plans` skills to create a `PLAN.md`. Session is marked "ready" when `PLAN.md` exists.
 
-These are advisory instructions to Claude, not enforced checks.
+### execute
 
-## Advisory Action Blocking
+```bash
+claude-sandbox execute                    # uses active session
+claude-sandbox execute --session my-feature  # specific session
+```
 
-The container includes PreToolUse hooks that advise Claude against external side effects:
+Runs Claude in a Docker container with the worktree mounted. Claude reads `PLAN.md` and iterates until all quality gates pass. Progress is logged to `~/.claude/sandbox-sessions/<id>.log`.
 
-- `git push` - advised against
-- `gh pr create` - advised against
-- `gh issue comment` - advised against
-- `curl -X POST` - advised against
-- Linear MCP writes - advised against
+### status
 
-Read operations are allowed (gh pr view, curl GET, etc.).
+```bash
+claude-sandbox status
+```
 
-> **Important**: Hooks are advisory. Claude can choose to ignore them. Always review changes before running `ship`.
+Shows session info, timestamps, and — for running sessions — uses Claude Haiku to analyze the log and estimate progress (phase, current activity, % to completion).
+
+### list
+
+```bash
+claude-sandbox list   # or: claude-sandbox ls
+```
+
+```
+ID                     NAME           BRANCH                             STATUS     AGE
+*2026-03-27-be10a5     my-feature     dakaneye/my-feature                running    12m
+ 2026-03-27-f8258f     token-work     sandbox/2026-03-27-7d9a8f          success    3h
+```
+
+### ship
+
+```bash
+claude-sandbox ship
+claude-sandbox ship --skip-review    # skip COMPLETION.md review prompt
+claude-sandbox ship --keep-worktree  # don't clean up after shipping
+```
+
+Validates COMPLETION.md shows success, opens it for review, then launches Claude with `/create-pr` to create the pull request.
+
+## How it works
+
+1. **spec** creates a git worktree (isolated branch) and launches Claude interactively to plan the work into `PLAN.md`
+2. **execute** spins up a Docker container with the worktree mounted, runs Claude with `--dangerously-skip-permissions` inside the container, and streams output to a log file
+3. Claude reads the plan, implements it, and iterates on quality gates (build, lint, test, `/review-code` grade A) until done
+4. Claude writes `COMPLETION.md` with the final status
+5. **ship** validates completion and creates a PR via Claude on the host
+
+The container has controlled mounts (worktree read-write, git config read-only, Claude settings pre-baked) and passes `ANTHROPIC_API_KEY` via environment inheritance.
+
+## GitHub Integration
+
+For private repo access inside the container, set `GITHUB_TOKEN`:
+
+```bash
+export GITHUB_TOKEN=$(gh auth token)   # or use octo-sts for scoped tokens
+claude-sandbox execute
+```
+
+The token is passed to the container and configured as a git credential helper scoped to `github.com` only. See `examples/octo-sts-policy.yaml` for an Octo STS trust policy example.
+
+## Quality Gates
+
+Claude is prompted to pass these gates before writing `COMPLETION.md`:
+
+1. `make build` or `go build`
+2. `golangci-lint run`
+3. `go test ./...`
+4. `/review-code` grade A
+
+These are advisory — Claude is instructed to follow them but enforcement is prompt-based. Always review changes before shipping.
 
 ## License
 
