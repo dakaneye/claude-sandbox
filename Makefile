@@ -1,4 +1,4 @@
-.PHONY: build test lint install clean
+.PHONY: build test test-e2e lint install clean
 
 BINARY := claude-sandbox
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -9,6 +9,9 @@ build:
 
 test:
 	go test -v -race ./...
+
+test-e2e: install
+	bash test/e2e/workflow_test.sh
 
 lint:
 	golangci-lint run ./...
