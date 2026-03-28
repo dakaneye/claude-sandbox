@@ -17,7 +17,6 @@ spec → execute → status → ship → clean
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/)
-- [apko](https://github.com/chainguard-dev/apko) (container image build)
 - [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) (`npm install -g @anthropic-ai/claude-code`)
 - `ANTHROPIC_API_KEY` environment variable
 
@@ -40,13 +39,15 @@ mv claude-sandbox /usr/local/bin/
 go install github.com/dakaneye/claude-sandbox/cmd/claude-sandbox@latest
 ```
 
-**Build the container image** (required before first `execute`):
+**Container image** (auto-pulled on first `execute`):
 
 ```bash
+# Pulled automatically, or manually:
+docker pull ghcr.io/dakaneye/claude-sandbox:latest
+
+# Or build locally (requires apko):
 claude-sandbox build
 ```
-
-This uses apko to build a minimal container with Claude CLI, pre-configured settings, and the review-code skill.
 
 ## Quick Start
 
@@ -161,6 +162,26 @@ Claude is prompted to pass these gates before writing `COMPLETION.md`:
 4. `/review-code` grade A
 
 These are advisory — Claude is instructed to follow them but enforcement is prompt-based. Always review changes before shipping.
+
+## Image Verification
+
+The container image is signed with [Sigstore](https://sigstore.dev) keyless signing and includes an SBOM and SLSA provenance attestation.
+
+```bash
+# Verify image signature
+cosign verify ghcr.io/dakaneye/claude-sandbox:latest \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp 'github.com/dakaneye/claude-sandbox'
+
+# Download SBOM
+cosign download sbom ghcr.io/dakaneye/claude-sandbox:latest | jq .
+
+# Verify SLSA provenance
+cosign verify-attestation ghcr.io/dakaneye/claude-sandbox:latest \
+  --type slsaprovenance \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp 'github.com/dakaneye/claude-sandbox'
+```
 
 ## License
 
