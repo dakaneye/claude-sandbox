@@ -63,7 +63,7 @@ func TestIsGitRepo(t *testing.T) {
 func TestCreate(t *testing.T) {
 	repo := setupTestRepo(t)
 
-	wt, err := Create(repo)
+	wt, err := Create(repo, "")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestCreate(t *testing.T) {
 func TestRemove(t *testing.T) {
 	repo := setupTestRepo(t)
 
-	wt, err := Create(repo)
+	wt, err := Create(repo, "")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestRemove(t *testing.T) {
 func TestDetect(t *testing.T) {
 	repo := setupTestRepo(t)
 
-	wt, err := Create(repo)
+	wt, err := Create(repo, "")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}

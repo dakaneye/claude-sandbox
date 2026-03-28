@@ -17,13 +17,14 @@ import (
 
 func newSpecCommand() *cobra.Command {
 	var name string
+	var branch string
 
 	cmd := &cobra.Command{
 		Use:   "spec",
 		Short: "Create a session and launch interactive Claude for planning",
 		Long: `Creates a new git worktree and launches Claude for planning and spec creation.
 
-The worktree is created with a branch named sandbox/<date>-<hash>.
+By default, the branch is named sandbox/<date>-<hash>. Use --branch to specify a custom name.
 Claude runs interactively in the worktree to help you plan and create specs.
 
 Use the /brainstorming and /writing-plans skills to guide Claude through the process.
@@ -33,16 +34,17 @@ After Claude exits, the session status is set based on whether PLAN.md exists:
 - If PLAN.md doesn't exist: Status is "failed" (no plan was created)`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSpec(cmd, name)
+			return runSpec(cmd, name, branch)
 		},
 	}
 
 	cmd.Flags().StringVar(&name, "name", "", "Friendly name for this session")
+	cmd.Flags().StringVar(&branch, "branch", "", "Custom branch name (default: sandbox/<date>-<hash>)")
 
 	return cmd
 }
 
-func runSpec(cmd *cobra.Command, sessionName string) error {
+func runSpec(cmd *cobra.Command, sessionName, branch string) error {
 	// Find the repo root
 	repoPath, err := findRepoRoot()
 	if err != nil {
@@ -51,7 +53,7 @@ func runSpec(cmd *cobra.Command, sessionName string) error {
 
 	// Create a new worktree
 	cmd.Println("Creating worktree...")
-	wt, err := worktree.Create(repoPath)
+	wt, err := worktree.Create(repoPath, branch)
 	if err != nil {
 		return fmt.Errorf("create worktree: %w", err)
 	}

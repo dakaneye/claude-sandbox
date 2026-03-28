@@ -27,7 +27,8 @@ func IsGitRepo(path string) bool {
 }
 
 // Create creates a new git worktree for sandbox work.
-func Create(repoPath string) (*Worktree, error) {
+// If branch is empty, a random branch name is generated.
+func Create(repoPath, branch string) (*Worktree, error) {
 	absRepo, err := filepath.Abs(repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("resolve repo path: %w", err)
@@ -39,8 +40,10 @@ func Create(repoPath string) (*Worktree, error) {
 
 	// Generate branch and path names
 	hash := id.RandomHex(6)
-	date := time.Now().Format("2006-01-02")
-	branch := fmt.Sprintf("sandbox/%s-%s", date, hash)
+	if branch == "" {
+		date := time.Now().Format("2006-01-02")
+		branch = fmt.Sprintf("sandbox/%s-%s", date, hash)
+	}
 	worktreePath := fmt.Sprintf("%s-sandbox-%s", absRepo, hash)
 
 	// Create the worktree
@@ -92,8 +95,8 @@ func Remove(worktreePath string) error {
 		_ = pruneCmd.Run()
 	}
 
-	// Delete the branch if it's a sandbox branch
-	if strings.HasPrefix(branch, "sandbox/") {
+	// Delete the branch (we only delete branches we created via worktree)
+	if branch != "" {
 		cmd = exec.Command("git", "branch", "-D", branch)
 		cmd.Dir = repoPath
 		_ = cmd.Run() // Best effort, branch may not exist
