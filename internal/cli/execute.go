@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -63,7 +62,7 @@ func runExecute(cmd *cobra.Command, sessionFlag string) error {
 	// Check COMPLETION.md for early exit if already succeeded
 	completionPath := filepath.Join(sess.WorktreePath, "COMPLETION.md")
 	if content, err := os.ReadFile(completionPath); err == nil {
-		if strings.Contains(string(content), "Status: SUCCESS") {
+		if parseCompletionStatus(string(content)) == state.StatusSuccess {
 			cmd.Println("Session already completed successfully.")
 			return nil
 		}
@@ -174,13 +173,7 @@ func runExecute(cmd *cobra.Command, sessionFlag string) error {
 
 			// Read COMPLETION.md to determine final status
 			if content, err := os.ReadFile(completionPath); err == nil {
-				if strings.Contains(string(content), "Status: SUCCESS") {
-					sess.Status = state.StatusSuccess
-				} else if strings.Contains(string(content), "Status: BLOCKED") {
-					sess.Status = state.StatusBlocked
-				} else {
-					sess.Status = state.StatusFailed
-				}
+				sess.Status = parseCompletionStatus(string(content))
 			} else if runErr != nil {
 				sess.Status = state.StatusFailed
 				sess.Error = runErr.Error()

@@ -26,12 +26,12 @@ func parseCompletionStatus(content string) state.Status {
 		value = strings.SplitN(value, "-", 2)[0]
 		value = strings.TrimSpace(value)
 
-		switch {
-		case value == "success" || value == "complete":
+		switch value {
+		case "success", "complete":
 			return state.StatusSuccess
-		case value == "blocked":
+		case "blocked":
 			return state.StatusBlocked
-		case value == "failed":
+		case "failed":
 			return state.StatusFailed
 		}
 	}

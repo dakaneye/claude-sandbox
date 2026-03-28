@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -66,7 +65,7 @@ func runShip(cmd *cobra.Command, sessionFlag string, skipReview, keepWorktree bo
 		return fmt.Errorf("read COMPLETION.md: %w", err)
 	}
 
-	if !strings.Contains(string(content), "Status: SUCCESS") {
+	if parseCompletionStatus(string(content)) != state.StatusSuccess {
 		return fmt.Errorf("COMPLETION.md does not show SUCCESS status. Cannot ship blocked or failed work")
 	}
 

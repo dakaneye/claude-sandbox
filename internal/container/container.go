@@ -141,7 +141,11 @@ Then do only what's needed:
 
 Quality gates: build, lint, test, /review-code grade A.
 Keep iterating on review feedback until grade A (do not stop at B or lower).
-Update COMPLETION.md with final status."`, escaped)
+When done, write COMPLETION.md. The FIRST LINE must be exactly one of:
+STATUS: SUCCESS
+STATUS: BLOCKED
+STATUS: FAILED
+Follow with details about what was done and quality gate results."`, escaped)
 }
 
 // shellEscape escapes a string for safe use in shell commands.

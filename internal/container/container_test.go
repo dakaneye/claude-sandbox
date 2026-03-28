@@ -175,6 +175,9 @@ func TestBuildClaudeCommand(t *testing.T) {
 	if !strings.Contains(cmd, "--dangerously-skip-permissions") {
 		t.Error("command should include --dangerously-skip-permissions")
 	}
+	if !strings.Contains(cmd, "STATUS: SUCCESS") {
+		t.Error("command should contain STATUS: SUCCESS instruction")
+	}
 }
 
 func TestShellEscape(t *testing.T) {
