@@ -101,7 +101,7 @@ func runSpec(cmd *cobra.Command, sessionName, branch string) error {
 	claudeCmd.Env = append(os.Environ(), "HOME="+home)
 
 	// Suppress Go's default SIGINT/SIGTERM handler so the child Claude
-	// process receives and handles Ctrl+C itself via process group.
+	// process receives Ctrl+C from the terminal driver naturally.
 	// The channel is intentionally unread — we only need to prevent Go
 	// from exiting, not act on the signal ourselves.
 	sigChan := make(chan os.Signal, 1)
