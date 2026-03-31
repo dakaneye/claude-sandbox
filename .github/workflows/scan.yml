@@ -1,31 +1,29 @@
-name: Monthly Image Scan
+name: Monthly Scan
 
 on:
   schedule:
-    - cron: '0 8 1 * *'  # 1st of each month, 8am UTC
-  workflow_dispatch: {}    # manual trigger
-
-permissions:
-  contents: read
-  security-events: write  # upload sarif results
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
 
 jobs:
   scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Scan published image
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
-        id: scan
+      - name: Grype filesystem scan
+        uses: anchore/scan-action@ba2e18e34737763b9c92004dfe2afbcbd2d6207d # main
         with:
-          image: ghcr.io/dakaneye/claude-sandbox:latest
+          path: "."
           fail-build: true
           severity-cutoff: high
           only-fixed: true
 
       - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: ${{ steps.scan.outputs.sarif }}
+          sarif_file: results.sarif
