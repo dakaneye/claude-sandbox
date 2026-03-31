@@ -1,31 +1,39 @@
-# Code of Conduct
+# Contributor Covenant Code of Conduct
 
-## Summary
+## Our Pledge
 
-Be respectful. We're all here to build useful tools.
+We as members, contributors, and leaders pledge to make participation in our
+community a harassment-free experience for everyone, regardless of age, body
+size, visible or invisible disability, ethnicity, sex characteristics, gender
+identity and expression, level of experience, education, socio-economic status,
+nationality, personal appearance, race, caste, color, religion, or sexual
+identity and orientation.
 
-## Guidelines
+## Our Standards
 
-- **Be constructive**: Feedback should help improve the project
-- **Be patient**: This is a personal project maintained in spare time
-- **Be welcoming**: Experience levels vary; help newcomers learn
-- **Stay on topic**: Keep discussions focused on the project
+Examples of behavior that contributes to a positive environment:
 
-## Unacceptable Behavior
+* Using welcoming and inclusive language
+* Being respectful of differing viewpoints and experiences
+* Gracefully accepting constructive criticism
+* Focusing on what is best for the community
+* Showing empathy towards other community members
 
-- Harassment, insults, or personal attacks
-- Trolling or inflammatory comments
-- Publishing others' private information
-- Spam or off-topic self-promotion
+Examples of unacceptable behavior:
+
+* The use of sexualized language or imagery, and sexual attention or advances of any kind
+* Trolling, insulting or derogatory comments, and personal or political attacks
+* Public or private harassment
+* Publishing others' private information without explicit permission
+* Other conduct which could reasonably be considered inappropriate in a professional setting
 
 ## Enforcement
 
-Issues will be addressed as needed. Repeated violations result in being blocked from the repository.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be
+reported to the project maintainer. All complaints will be reviewed and
+investigated promptly and fairly.
 
-## Reporting
+## Attribution
 
-For conduct issues, contact the repository owner directly via GitHub.
-
----
-
-This project follows the spirit of the [Contributor Covenant](https://www.contributor-covenant.org/), adapted for a small open source project.
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org),
+version 2.1.
