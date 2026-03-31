@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   review:
-    if: github.actor != 'dependabot[bot]'
+    if: github.actor != 'dependabot[bot]' && github.actor != 'dakaneye-repo-sync[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
