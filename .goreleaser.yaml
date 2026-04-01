@@ -33,22 +33,7 @@ checksum:
   name_template: "checksums.txt"
 
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^ci:"
-      - "^chore:"
-  groups:
-    - title: Features
-      regexp: "^feat"
-    - title: Bug Fixes
-      regexp: "^fix"
-    - title: Performance
-      regexp: "^perf"
-    - title: Refactor
-      regexp: "^refactor"
+  disable: true
 
 release:
   github:
@@ -56,21 +41,3 @@ release:
     name: claude-sandbox
   draft: false
   prerelease: auto
-  header: |
-    ## Installation
-
-    ```bash
-    # macOS arm64
-    brew install dakaneye/tap/claude-sandbox  # coming soon
-
-    # Or download binary
-    curl -L https://github.com/dakaneye/claude-sandbox/releases/download/v{{ .Version }}/claude-sandbox_{{ .Version }}_darwin_arm64.tar.gz | tar xz
-    sudo mv claude-sandbox /usr/local/bin/
-
-    # Or from source
-    go install github.com/dakaneye/claude-sandbox/cmd/claude-sandbox@v{{ .Version }}
-    ```
-
-    Requires Docker and [apko](https://github.com/chainguard-dev/apko). Run `claude-sandbox build` once before first use.
-
-    See [README](https://github.com/dakaneye/claude-sandbox#readme) for full setup and usage.
