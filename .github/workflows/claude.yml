@@ -44,6 +44,6 @@ jobs:
           prpm install @dakaneye/dakaneye-review-code@1.0.4
 
       - name: Run Claude
-        uses: anthropics/claude-code-action@4e5d8b13ca281a6d163cdb287d8917b216e00d6f # v1.0.103
+        uses: anthropics/claude-code-action@b3c0320e7e8228fcafe773fda5bfd427aa8d1c34 # v1.0.109
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
