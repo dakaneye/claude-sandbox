@@ -14,7 +14,7 @@ contents:
     - findutils
 
     # Node.js runtime (Claude Code)
-    - nodejs-22
+    - nodejs-24
     - npm
 
     # Go development
